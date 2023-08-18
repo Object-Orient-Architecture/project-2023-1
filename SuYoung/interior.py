@@ -12,9 +12,9 @@ import Rhino.Geometry as rg  # type: ignore
 import scriptcontext as sc  # type: ignore
 
 # 인풋
-plan = 0        # 평면
-usage = 0       # 용도
-fur_List = 0    # 가구
+plan = None        # 평면 : rg.Polyline
+usage = -1       # 용도 : int
+fur_List = None    # 가구 : [rg.Brep]
 
 # 가구 클래스
 class Furniture:
@@ -23,7 +23,9 @@ class Furniture:
         self.bbox = Model.GetBoundingBox(rg.Plane.WorldXY)
         self.area = self.get_area()
         self.height = self.get_height()
-    
+        self.width,self.depth = self.get_width()
+        self.position = self.get_center()
+
     def get_area(self):
         
         '''
@@ -38,8 +40,11 @@ class Furniture:
                 points.append(corner)
         points.append(points[0])
         area = rg.PolylineCurve(points)
-        
+
         return area
+    
+    def get_center(self):
+        return self.area.ToPolyline().CenterPoint()
     
     def get_height(self):
         
@@ -54,8 +59,14 @@ class Furniture:
         return maxPt.Z - minPt.Z
     
     def get_width(self):
-        bbox = self.bbox        
-        return
+        '''
+        가구의 너비와 깊이를 도출하는 함수
+        '''
+        area = self.area.ToPolyline()
+        lines = area.GetSegments()
+        width = max(lines,key=lambda x:x.Length).Length
+        depth = min(lines,key=lambda x:x.Length).Length
+        return width,depth
     
 class Table(Furniture):
     def __init__(self,Model=rg.GeometryBase,Type="탁자"):
@@ -106,6 +117,10 @@ class Room:
             room = BathRoom(self.plan,room_type)
 
         return  room
+    
+    def get_shape(self):
+        lines = self.plan.GetSegments()
+        return lines
         
 class LivingRoom(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
