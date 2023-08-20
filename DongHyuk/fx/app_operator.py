@@ -52,16 +52,3 @@ class Operator:
                 # building_info = building_file[0]
                 # print(building_info.keys())
                 # temp_b = [(BuildingElement(v).height, print(i)) for i,v in enumerate(building_file)]
-                
-                
-                
-                
-                
-                
-
-                
-        
-
-                
-                
-                
