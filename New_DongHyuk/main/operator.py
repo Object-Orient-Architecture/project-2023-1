@@ -1,6 +1,7 @@
 from os import path
 from shutil import rmtree
 from zipfile import ZipFile
+import geopandas as gpd
 
 
 class Operator:
@@ -44,14 +45,22 @@ class Operator:
 
     # 3 - 2 | Find & Objectify Elements
     def find_elements(self, index: str):
-        file_names = self.zip_file.namelist
+        file_names = self.zip_file.namelist()  # namelist includes .shp, .shx and so on
         shp_names = [
             name
             for name in file_names
             if self.__LAYER_INDEX[index] in name and name.endswith(".shp")
-        ]
-
-        return shp_names
+        ]  # Filter shp files which is of index
+        dict_geoinfo = [
+            gpd.read_file(
+                self.zip_dir + 
+                self.__TEMP_UNZIP_DIR + 
+                "\\" + shp_name
+                ,encoding='euc-kr'
+            ).to_dict(orient="records")
+            for shp_name in shp_names
+        ] # Convert shp Files into dict data list
+        return dict_geoinfo
 
     # 3 - 3 | Bake Elements into Rhino Object
 
@@ -68,3 +77,7 @@ if __name__ == "__main__":
 
     test_dir = "New_DongHyuk\\main\\data_src\\376120562 - 학교 + 산지\\(B010)수치지도_376120562_2022_00000642796721.zip"
     operator.set_zip_file(ZipFile(test_dir))
+    operator.unzip()
+    building_elements = operator.find_elements('BUILDING')
+    [print(str(elm)+'\n') for elm in building_elements[0]]
+    operator.remove_unzipped()
