@@ -25,6 +25,7 @@ class BuildingElement(Element):
         self.name = dict_properties["주기"]
         self.type = dict_properties["종류"]
         self.usage = dict_properties["용도"]
+        self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
         self.dictionary_prop = dict_properties
         
@@ -40,6 +41,7 @@ class BuildingElement(Element):
 
 class VegetationElement(Element):
     def __init__(self, dict_properties: dict):
+        self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
         self.dictionary_prop = dict_properties
         
@@ -54,6 +56,7 @@ class ContourElement(Element):
     def __init__(self, dict_properties: dict):
         self.elevation = dict_properties["등고수치"]
         self.type = dict_properties["구분"]
+        self.geometry_object = dict_properties["geometry"]
         
         self.geometry = mapping(dict_properties["geometry"]) #dict
         self.dictionary_prop = dict_properties
@@ -67,6 +70,7 @@ class ContourElement(Element):
 
 class RoadElement(Element):
     def __init__(self, dict_properties: dict):
+        self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
         self.dictionary_prop = dict_properties
         
