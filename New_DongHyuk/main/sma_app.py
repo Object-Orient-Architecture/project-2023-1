@@ -46,11 +46,14 @@ class SMA:
             self.operator.set_zip_file(self.zip_file)
             self.operator.unzip()
             self.operator.find_elements("BUILDING")
+            self.operator.find_elements("CONTOUR")
+            self.operator.find_elements("ROAD")
+            self.operator.find_elements("VEGETATION")
             self.operator.bake_elements_tojson()
         except Exception as e:
             raise e
         finally:
-            self.operator.remove_unzipped()
+            self.operator.remove_unzipped() # Unconditionally remove unzipped file
         
     #1 -3 | Get Result
     def get_result(self):

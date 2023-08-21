@@ -75,7 +75,6 @@ class Operator:
         # CAUTION : readed file contains the largest container<List> which only has one element so that removing that is needed
 
         if index == "BUILDING":
-            print(dict_geoinfos)
             self.buildings = [
                 BuildingElement(info) for info in dict_geoinfos
             ]  # Return List<BuildingElement> from shp data
@@ -91,7 +90,6 @@ class Operator:
             self.contours = [
                 ContourElement(info) for info in dict_geoinfos
             ]  # Return List<ContourElement> from shp data
-
         # Throws Exception when index is not one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'
         else:
             print(
@@ -118,7 +116,7 @@ class Operator:
                     remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
                     
                 with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
-                    json.dump([elm.dictionary_prop for elm in element], json_file, indent=4)
+                    json.dump([elm.dictionary_prop for elm in element], json_file, indent=4,ensure_ascii=False)
 
     # 3 - 4 | Save Rhino Object
 
@@ -128,13 +126,3 @@ class Operator:
         rmtree(unzip_path)
 
 
-#####DEBUG#####
-if __name__ == "__main__":
-    operator = Operator()
-
-    test_dir = "New_DongHyuk\\main\\data_src\\376120562 - 학교 + 산지\\(B010)수치지도_376120562_2022_00000642796721.zip"
-    operator.set_zip_file(ZipFile(test_dir))
-    operator.unzip()
-    operator.find_elements("BUILDING")
-    operator.bake_elements_tojson()
-    operator.remove_unzipped()
