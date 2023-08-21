@@ -1,7 +1,10 @@
-from os import path
+from os import path, makedirs, remove
 from shutil import rmtree
 from zipfile import ZipFile
 import geopandas as gpd
+import json
+
+from elements import RoadElement, BuildingElement, VegetationElement, ContourElement
 
 
 class Operator:
@@ -18,6 +21,7 @@ class Operator:
     """
 
     # 1 | Constants
+
     __TEMP_UNZIP_DIR = "\\.temp"
     __LAYER_INDEX = {
         "ROAD": "A001",
@@ -30,13 +34,16 @@ class Operator:
     def __init__(self):
         self.zip_file = None  # ZipFile Object
         self.zip_dir = ""  # path : path of zip_file
+        self.buildings = []  # List<BuildingElement>
+        self.roads = []  # List<RoadElement>
+        self.vegetations = []  # List<VegetationElement>
+        self.contours = []  # List<ContourElement>
 
     # 3 | Methods
     # 3 - 0 | Set Zip File
     def set_zip_file(self, zip_file: ZipFile):
         self.zip_file = zip_file
         self.zip_dir = path.dirname(self.zip_file.filename)
-        print(self.zip_dir)
 
     # 3 - 1 | Unzip File
     def unzip(self):
@@ -45,24 +52,73 @@ class Operator:
 
     # 3 - 2 | Find & Objectify Elements
     def find_elements(self, index: str):
+        """
+        throws Exception when index is not one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'
+        """
         file_names = self.zip_file.namelist()  # namelist includes .shp, .shx and so on
+
         shp_names = [
             name
             for name in file_names
             if self.__LAYER_INDEX[index] in name and name.endswith(".shp")
         ]  # Filter shp files which is of index
-        dict_geoinfo = [
+
+        dict_geoinfos = [
             gpd.read_file(
-                self.zip_dir + 
-                self.__TEMP_UNZIP_DIR + 
-                "\\" + shp_name
-                ,encoding='euc-kr'
+                self.zip_dir + self.__TEMP_UNZIP_DIR + "\\" + shp_name,
+                encoding="euc-kr",
             ).to_dict(orient="records")
             for shp_name in shp_names
-        ] # Convert shp Files into dict data list
-        return dict_geoinfo
+        ][
+            0
+        ]  # Convert shp Files into dict data list
+        # CAUTION : readed file contains the largest container<List> which only has one element so that removing that is needed
+
+        if index == "BUILDING":
+            print(dict_geoinfos)
+            self.buildings = [
+                BuildingElement(info) for info in dict_geoinfos
+            ]  # Return List<BuildingElement> from shp data
+        elif index == "ROAD":
+            self.roads = [
+                RoadElement(info) for info in dict_geoinfos
+            ]  # Return List<RoadElement> from shp data
+        elif index == "VEGETATION":
+            self.vegetations = [
+                VegetationElement(info) for info in dict_geoinfos
+            ]  # Return List<VegetationElement> from shp data
+        elif index == "CONTOUR":
+            self.contours = [
+                ContourElement(info) for info in dict_geoinfos
+            ]  # Return List<ContourElement> from shp data
+
+        # Throws Exception when index is not one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'
+        else:
+            print(
+                "Wrong Index | Please write one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'"
+            )
+            raise Exception(
+                "Wrong Index | Please write one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'"
+            )
 
     # 3 - 3 | Bake Elements into Rhino Object
+    def bake_elements_tojson(self):
+        dir_name = '.\\New_DongHyuk\\main\\.json_cache\\builing'
+        elements = [self.roads, self.buildings, self.vegetations, self.contours]
+        elements_name = ['roads','buildings','vegetations','contours']
+        for i,element in enumerate(elements):
+            if len(element) == 0:
+                pass
+            else:
+                if(not path.isdir(dir_name)):
+                    makedirs(dir_name)
+                # Check if file already exists
+                if path.isfile('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i])):
+                    # Remove previous file
+                    remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
+                    
+                with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
+                    json.dump([elm.dictionary_prop for elm in element], json_file, indent=4)
 
     # 3 - 4 | Save Rhino Object
 
@@ -72,12 +128,13 @@ class Operator:
         rmtree(unzip_path)
 
 
+#####DEBUG#####
 if __name__ == "__main__":
     operator = Operator()
 
     test_dir = "New_DongHyuk\\main\\data_src\\376120562 - 학교 + 산지\\(B010)수치지도_376120562_2022_00000642796721.zip"
     operator.set_zip_file(ZipFile(test_dir))
     operator.unzip()
-    building_elements = operator.find_elements('BUILDING')
-    [print(str(elm)+'\n') for elm in building_elements[0]]
+    operator.find_elements("BUILDING")
+    operator.bake_elements_tojson()
     operator.remove_unzipped()
