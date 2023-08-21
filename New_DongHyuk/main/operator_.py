@@ -4,7 +4,8 @@ from zipfile import ZipFile
 import geopandas as gpd
 import json
 
-from elements import RoadElement, BuildingElement, VegetationElement, ContourElement
+
+from elements import Element, RoadElement, BuildingElement, VegetationElement, ContourElement
 
 
 class Operator:
@@ -69,9 +70,7 @@ class Operator:
                 encoding="euc-kr",
             ).to_dict(orient="records")
             for shp_name in shp_names
-        ][
-            0
-        ]  # Convert shp Files into dict data list
+        ][0]  # Convert shp Files into dict data list
         # CAUTION : readed file contains the largest container<List> which only has one element so that removing that is needed
 
         if index == "BUILDING":
@@ -100,26 +99,45 @@ class Operator:
             )
 
     # 3 - 3 | Bake Elements into Rhino Object
-    def bake_elements_tojson(self):
-        dir_name = '.\\New_DongHyuk\\main\\.json_cache\\builing'
-        elements = [self.roads, self.buildings, self.vegetations, self.contours]
-        elements_name = ['roads','buildings','vegetations','contours']
-        for i,element in enumerate(elements):
-            if len(element) == 0:
-                pass
-            else:
-                if(not path.isdir(dir_name)):
-                    makedirs(dir_name)
-                # Check if file already exists
-                if path.isfile('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i])):
-                    # Remove previous file
-                    remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
+    # def bake_elements_tojson(self):
+    #     dir_name = '.\\New_DongHyuk\\main\\.json_cache'
+    #     elements = [self.roads, self.buildings, self.vegetations, self.contours]
+    #     elements_name = ['roads','buildings','vegetations','contours']
+    #     for i,element in enumerate(elements):
+    #         if len(element) == 0:
+    #             pass
+    #         else:
+    #             if(not path.isdir(dir_name)):
+    #                 makedirs(dir_name)
+    #             # Check if file already exists
+    #             if path.isfile('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i])):
+    #                 # Remove previous file
+    #                 remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
                     
-                with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
-                    json.dump([elm.dictionary_prop for elm in element], json_file, indent=4,ensure_ascii=False)
+    #             with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
+    #                 json.dump([elm.dictionary_prop for elm in element], json_file, indent=4,ensure_ascii=False)
 
+    def bake_elements_to_rhino(self):
+        # 3 - 3 - 1 | Bake Roads
+        # for road in self.roads:
+        #     road.build_to_rhino()
+
+        # 3 - 3 - 2 | Bake Buildings
+        for building in self.buildings:
+            building.build_to_rhino()
+
+        # 3 - 3 - 3 | Bake Vegetations
+        for vegetation in self.vegetations:
+            vegetation.build_to_rhino()
+
+        # 3 - 3 - 4 | Bake Contours
+        # for contour in self.contours:
+        #     contour.build_to_rhino()
+        
     # 3 - 4 | Save Rhino Object
-
+    def save_rhino_object(self):
+        Element.doc_rh.Write('C:\\Users\\dpemr\\Desktop\\Documentary\\Project Files\\DPA\\project-2023-1\\New_DongHyuk\\main\\result\\result.3dm',version=6)
+        
     # 3 - 5 | Remove Unzipped File
     def remove_unzipped(self):
         unzip_path = self.zip_dir + self.__TEMP_UNZIP_DIR
