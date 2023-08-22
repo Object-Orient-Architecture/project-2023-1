@@ -133,6 +133,7 @@ class Operator:
         # 3 - 3 - 4 | Bake Contours
         for contour in self.contours:
             contour.build_to_rhino()
+        ContourElement.build_to_surface()
         
     # 3 - 4 | Save Rhino Object
     def save_rhino_object(self):
