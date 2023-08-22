@@ -28,7 +28,7 @@ class Operator:
         "ROAD": "A001",
         "BUILDING": "B001",
         "VEGETATION": "D003",
-        "CONTOUR": "F001",
+        "CONTOUR": "F0010000",
     }
 
     # 2 | Properties
@@ -99,23 +99,23 @@ class Operator:
             )
 
     # 3 - 3 | Bake Elements into Rhino Object
-    # def bake_elements_tojson(self):
-    #     dir_name = '.\\New_DongHyuk\\main\\.json_cache'
-    #     elements = [self.roads, self.buildings, self.vegetations, self.contours]
-    #     elements_name = ['roads','buildings','vegetations','contours']
-    #     for i,element in enumerate(elements):
-    #         if len(element) == 0:
-    #             pass
-    #         else:
-    #             if(not path.isdir(dir_name)):
-    #                 makedirs(dir_name)
-    #             # Check if file already exists
-    #             if path.isfile('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i])):
-    #                 # Remove previous file
-    #                 remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
+    def bake_elements_tojson(self):
+        dir_name = '.\\New_DongHyuk\\main\\.json_cache'
+        elements = [self.roads, self.buildings, self.vegetations, self.contours]
+        elements_name = ['roads','buildings','vegetations','contours']
+        for i,element in enumerate(elements):
+            if len(element) == 0:
+                pass
+            else:
+                if(not path.isdir(dir_name)):
+                    makedirs(dir_name)
+                # Check if file already exists
+                if path.isfile('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i])):
+                    # Remove previous file
+                    remove('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]))
                     
-    #             with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
-    #                 json.dump([elm.dictionary_prop for elm in element], json_file, indent=4,ensure_ascii=False)
+                with open('{dir}/{name}.json'.format(dir = dir_name,name=elements_name[i]),'x') as json_file:
+                    json.dump([elm.dictionary_prop for elm in element], json_file, indent=4,ensure_ascii=False)
 
     def bake_elements_to_rhino(self):
         # 3 - 3 - 1 | Bake Roads
@@ -131,12 +131,15 @@ class Operator:
             vegetation.build_to_rhino()
 
         # 3 - 3 - 4 | Bake Contours
-        # for contour in self.contours:
-        #     contour.build_to_rhino()
+        for contour in self.contours:
+            contour.build_to_rhino()
         
     # 3 - 4 | Save Rhino Object
     def save_rhino_object(self):
-        Element.doc_rh.Write('C:\\Users\\dpemr\\Desktop\\Documentary\\Project Files\\DPA\\project-2023-1\\New_DongHyuk\\main\\result\\result.3dm',version=6)
+        result_path = '.\\DongHyuk\\main\\result\\result.3dm'
+        if(path.isfile(result_path)):
+            remove(result_path)
+        Element.doc_rh.Write(result_path,version=6)
         
     # 3 - 5 | Remove Unzipped File
     def remove_unzipped(self):

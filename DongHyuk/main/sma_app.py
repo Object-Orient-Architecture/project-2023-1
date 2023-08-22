@@ -1,6 +1,7 @@
 from constants.options import *
 from zipfile import ZipFile
 from operator_ import Operator
+import subprocess
 
 
 class SMA:
@@ -49,6 +50,7 @@ class SMA:
             self.operator.find_elements("CONTOUR")
             self.operator.find_elements("ROAD")
             self.operator.find_elements("VEGETATION")
+            self.operator.bake_elements_tojson()
             self.operator.bake_elements_to_rhino()
             self.operator.save_rhino_object()
         except Exception as e:
@@ -58,6 +60,9 @@ class SMA:
         
     #1 -3 | Get Result
     def get_result(self):
-        pass
+        rhino_exe_path = r'C:\Program Files\Rhino 6\System\Rhino.exe'
+        file_to_open = '.\\DongHyuk\\main\\result\\result.3dm'
+        command = [rhino_exe_path, file_to_open]
+        subprocess.run(command)
     
     

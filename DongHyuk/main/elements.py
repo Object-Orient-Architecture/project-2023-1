@@ -18,8 +18,6 @@ def coords_to_rhino_point(coords):
 class Element(ABC):
     file_dir = '.\\New_DongHyuk\\main\\.rhino_temp'
     doc_rh = rh.File3dm()
-
-    
     @abstractmethod
     def build_to_rhino(self):
         pass
@@ -87,7 +85,12 @@ class ContourElement(Element):
         self.dictionary_prop["geometry"] = self.geometry
 
     def build_to_rhino(self):
-        pass
+        coords = self.geometry['coordinates']
+        points = [coords_to_rhino_point(coord) for coord in coords] 
+        #move each points to elevation(z-axis)
+        points = [rh.Point3d(coord[0],coord[1],self.elevation) for coord in coords]
+        curve = rh.Curve.CreateControlPointCurve(points,1)
+        Element.doc_rh.Objects.AddCurve(curve)
 
 
 class RoadElement(Element):
