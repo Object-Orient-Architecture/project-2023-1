@@ -23,19 +23,31 @@ type_table = {
             "table": ("table", "desk", "coffe table") ,
             "chair": ("chair", "sofa big", "sofa small"),
             "bed" : "bed",
-            "shelf" : ("shelf small", "shelf big")
+            "shelf" : ("shelf small", "shelf big","closet")
             }
 
 # 가구 클래스
 class Furniture:
     def __init__(self,Model=rg.GeometryBase):
         self.model = Model
-        self.bbox = Model.GetBoundingBox(rg.Plane.WorldXY)
-        self.area = self.get_area()
+        self.bbox = self.model.GetBoundingBox(rg.Plane.WorldXY)
         self.height = self.get_height()
         self.width,self.depth = self.get_width()
-        self.position = self.get_center()
-        
+
+    @property
+    def area(self):
+        # 가구의 바닥 면적을 폴리라인으로 도출하는 함수
+        bbox = self.bbox
+        points = []
+        floor = min(bbox.GetCorners(),key=lambda x: x.Z).Z
+        for corner in bbox.GetCorners():
+            if (corner.Z == floor):
+                points.append(corner)
+        points.append(points[0])
+        area = rg.PolylineCurve(points)
+
+        return area
+    
     def set_fur_type(self,fur_type,type_table = dict):
         # 가구의 상세타입을 입력하면 자동으로 클래스를 생성하는 함수
         # fur_type = 가구의 상세타입, type_table = 타입을 정리한 테이블
@@ -62,32 +74,25 @@ class Furniture:
         # location을 받으면 해당 위치로 translate
         move_vector = location - self.position
         trans = rg.Transform.Translation(move_vector)
-        self.model.Transform(trans)        
-    
+        self.model.Transform(trans)
+        self.bbox.Transform(trans)
+
     def rotate(self, angle):
-        # 라디안 angle 받아서 rotate
-        raise NotImplementedError
+        # angle을 받으면 해당 각도만큼 rotate
+        # angle = degree (float)
+        angle = math.radians(angle)
+        trans = rg.Transform.Rotation(angle,self.position)
+        self.model.Transform(trans)
+        self.bbox.Transform(trans)
     
     def place(self, room):
         # room 클래스를 받고 room의 컨디션을 활용해서
         # 배치를 잘 한다.
         raise NotImplementedError
     
-    def get_area(self):        
-        # 가구의 바닥 면적을 폴리라인으로 도출하는 함수
-  
-        bbox = self.bbox
-        points = []
-        floor = min(bbox.GetCorners(),key=lambda x: x.Z).Z
-        for corner in bbox.GetCorners():
-            if (corner.Z == floor):
-                points.append(corner)
-        points.append(points[0])
-        area = rg.PolylineCurve(points)
-
-        return area
-    
-    def get_center(self):
+    @property
+    def position(self):
+        # 가구의 위치를 도출하는 함수
         return self.area.ToPolyline().CenterPoint()
     
     def get_height(self):
@@ -139,6 +144,10 @@ class Room:
         self.possible_region = plan
         self.placed_furniture=[]
     
+    def get_region(self):
+        # 방의 영역을 도출하는 함수 
+        return
+
     def get_furniture_list(self):
         # 방의 타입에 맞는 가구를 클래스로 만들어 지정한 리스트에 저장하는 함수
         
@@ -181,15 +190,29 @@ class Room:
 
         return  room
     
-    def get_shape(self):
-        lines = self.plan.GetSegments()
-        return lines
+    @property
+    def shapetype(self):
+        if (self.wall[1] >= self.wall[2]):
+            return 0        # 세로형, 정방형
+        else:
+            return 1        # 가로형
+    
+    @property
+    def axis(self):
+        # 방의 축을 반환한다.(축: 사람이 방 내부로 들어오는 방향) -> rg.Vector3D
+        arrow = rg.Line(self.door[0],self.door[1])
+        center = rg.Point3d((arrow[0].X + arrow[1].X)/2, (arrow[0].Y + arrow[1].Y)/2,0)
+        trans = rg.Transform.Rotation(math.radians(90),rg.Vector3d.ZAxis,center)
+        arrow.Transform(trans)
+
+        return arrow
 
     def load(self):
         return [Bed(), Table()]
     
     def update(self, fur):
         self.possible_region
+
     @property
     def possible_region(self):
         # 플랜에서 placed furniture를 제외한 영역을 리턴한다.
@@ -213,7 +236,7 @@ class BedRoom(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
         Room.__init__(self,Plan)
         self.type = Type
-        self.typelist = ["bed","desk","chair","shelf big"]
+        self.typelist = ["bed","desk","chair","closet"]
         
 class Kitchen(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
