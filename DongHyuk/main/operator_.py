@@ -119,8 +119,8 @@ class Operator:
 
     def bake_elements_to_rhino(self):
         # 3 - 3 - 1 | Bake Roads
-        # for road in self.roads:
-        #     road.build_to_rhino()
+        for road in self.roads:
+            road.build_to_rhino()
 
         # 3 - 3 - 2 | Bake Buildings
         for building in self.buildings:
@@ -133,7 +133,7 @@ class Operator:
         # 3 - 3 - 4 | Bake Contours
         for contour in self.contours:
             contour.build_to_rhino()
-        ContourElement.build_to_surface()
+        # ContourElement.build_to_surface()
         
     # 3 - 4 | Save Rhino Object
     def save_rhino_object(self):

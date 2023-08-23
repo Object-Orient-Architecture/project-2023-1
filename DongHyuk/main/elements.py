@@ -1,6 +1,4 @@
 from abc import ABC, abstractmethod
-
-####IT IS FOR DEBUGGING####
 from json import dump
 from os import makedirs
 from shutil import rmtree
@@ -8,9 +6,6 @@ from shapely.geometry import Polygon, LineString, Point, mapping
 from scipy.spatial import Delaunay
 import numpy as np
 import rhino3dm as rh
-import compute_rhino3d as rc
-import compute_rhino3d.Curve as rcc
-
 
 def replace_nan_with_str(data_dict):
             for key in data_dict:
@@ -21,7 +16,6 @@ def coords_to_rhino_point(coords):
             return rh.Point3d(coords[0],coords[1],0)
                           
 class Element(ABC):
-    file_dir = '.\\New_DongHyuk\\main\\.rhino_temp'
     doc_rh = rh.File3dm()
     @abstractmethod
     def build_to_rhino(self):
@@ -46,8 +40,6 @@ class BuildingElement(Element):
         self.dictionary_prop["geometry"] = self.geometry
 
     def build_to_rhino(self):
-        
-        
         coords = self.geometry['coordinates'][0]
         points = rh.Point3dList([coords_to_rhino_point(coord) for coord in coords])
         
@@ -55,8 +47,6 @@ class BuildingElement(Element):
         Extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
         Element.doc_rh.Objects.AddExtrusion(Extrusion)
         
-        
-    
     def __str__(self):
         return f"Building Element Object : Floor : {self.floor} | Name : {self.name} | Type : {self.type} | Usage : {self.usage}"
 
@@ -98,14 +88,13 @@ class ContourElement(Element):
         #move each points to elevation(z-axis)
         points = [rh.Point3d(coord[0],coord[1],self.elevation) for coord in coords]
         curve = rh.Curve.CreateControlPointCurve(points,1)
-        ContourElement.divided_points.append(rcc.DivideByCount1(curve,ContourElement.resolution_of_division,True))
         Element.doc_rh.Objects.AddCurve(curve)
 
-
-    def build_to_surface():
+    @classmethod
+    def build_to_surface(cls):
         pts = ContourElement.divided_points
         print(pts)
-    
+        rg.Mesh.CreateFromTesslations()
 class RoadElement(Element):
     def __init__(self, dict_properties: dict):
         self.geometry_object = dict_properties["geometry"]
@@ -116,6 +105,11 @@ class RoadElement(Element):
         self.dictionary_prop["geometry"] = self.geometry
 
     def build_to_rhino(self):
-        pass
+        coords = self.geometry['coordinates'][0]
+        points = [rh.Point3d(coord[0],coord[1],0) for coord in coords]
+        curve = rh.Curve.CreateControlPointCurve(points,1)
+        
+        Element.doc_rh.Objects.AddCurve(curve)
+                
 
 
