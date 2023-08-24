@@ -89,6 +89,7 @@ class Operator:
             self.contours = [
                 ContourElement(info) for info in dict_geoinfos
             ]  # Return List<ContourElement> from shp data
+            self.contours.sort(key=lambda x: x.elevation)
         # Throws Exception when index is not one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'
         else:
             print(
@@ -100,7 +101,7 @@ class Operator:
 
     # 3 - 3 | Bake Elements into Rhino Object
     def bake_elements_tojson(self):
-        dir_name = '.\\New_DongHyuk\\main\\.json_cache'
+        dir_name = '.\\DongHyuk\\main\\.json_cache'
         elements = [self.roads, self.buildings, self.vegetations, self.contours]
         elements_name = ['roads','buildings','vegetations','contours']
         for i,element in enumerate(elements):
@@ -133,7 +134,8 @@ class Operator:
         # 3 - 3 - 4 | Bake Contours
         for contour in self.contours:
             contour.build_to_rhino()
-        # ContourElement.build_to_surface()
+            
+        ContourElement.build_to_surface()
         
     # 3 - 4 | Save Rhino Object
     def save_rhino_object(self):
