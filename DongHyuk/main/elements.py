@@ -95,7 +95,7 @@ class ContourElement(Element):
         # Element.doc_rh.Objects.AddCurve(curve)
 
     @classmethod
-    def build_to_surface(cls):
+    def old_build_to_surface(cls):
         #Group by Elevation
         def __group_to_connect(data_list,elev_list):
             grouped_data = {}
@@ -137,11 +137,7 @@ class ContourElement(Element):
         
         def redirect_curves(curves:list):
             pass
-            
-                        
-                        
-            
-            
+        
         rep_elev_curve = {}
         for elev,curve_group in elev_grouped_curves.items():
             if len(curve_group) == 1:
@@ -197,6 +193,18 @@ class ContourElement(Element):
             # print(curve.PointAtEnd.Z)
             pass
         
+    @classmethod
+    def build_to_surface(cls):
+        #Divide Curves according to length
+        crvs = ContourElement.curves
+        
+        # Project divided points on XY Plane
+        
+        # Find Delaunay Triangulation (simplices) by scipy.spatial.Delaunay
+        
+        #create Mesh (referencing test_del.py)
+        ## Original Point & Provided Faces
+        ## **It is important that original points and projected points are in the same order
         
 class RoadElement(Element):
     def __init__(self, dict_properties: dict):
