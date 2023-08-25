@@ -35,6 +35,10 @@ class BuildingElement(Element):
     
     FLOOR_HEIGHT = 4.0
     building_layer = rh.Layer()
+    building_layer.Name = "Building"
+    building_layer_ind = Element.doc_rh.Layers.Add(building_layer)
+    building_attribute = rh.ObjectAttributes()
+    building_attribute.LayerIndex = building_layer_ind
     
     def __init__(self, dict_properties: dict):
         
@@ -58,10 +62,19 @@ class BuildingElement(Element):
         extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
         self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion)
         
+        
+                
     def __str__(self):
         return f"Building Element Object : Floor : {self.floor} | Name : {self.name} | Type : {self.type} | Usage : {self.usage}"
 
 class VegetationElement(Element):
+    
+    vegetation_layer = rh.Layer()
+    vegetation_layer.Name = 'Vegetation'
+    vegetation_layer_ind = Element.doc_rh.Layers.Add(vegetation_layer)
+    vegetation_attribute = rh.ObjectAttributes()
+    vegetation_attribute.LayerIndex = vegetation_layer_ind
+    
     def __init__(self, dict_properties: dict):
         self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
@@ -74,7 +87,8 @@ class VegetationElement(Element):
         coord = self.geometry['coordinates']
         point = coords_to_rhino_point(coord)
     
-        Element.doc_rh.Objects.AddPoint(point)
+        self.vegetaion_id = Element.doc_rh.Objects.AddPoint(point)
+        # Element.doc_rh.Objects.FindId(self.vegetation_id).Attributes = VegetationElement.vegetation_attribute 
 
 class ContourElement(Element):
     
