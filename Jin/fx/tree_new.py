@@ -4,21 +4,22 @@ import random
 import math
 import rhinoscriptsyntax as rs
 import ghpythonlib.components as ghcomp
-
-
+import scriptcontext as sc
+# from typing import List
 def check_contain(pt, boundary):
     # type: (geo.Curve, geo.Point3d) -> bool
     # -1: 일치, 0: 밖, 1: 안
     int_result = ghcomp.ClipperComponents.PolylineContainment(
         boundary, pt, geo.Plane.WorldXY, 0.1
     )
+    print(int_result)
     return int_result == 1
 
 
 # 바운더리 커브 안에 랜덤 시드 생성
 def get_random_point_in_curve_boundary(boundary_curve):
     bbox = boundary_curve.GetBoundingBox(True)
-    while True:
+    for _ in range(100):
         x = random.uniform(bbox.Min.X, bbox.Max.X)
         y = random.uniform(bbox.Min.Y, bbox.Max.Y)
         pt = geo.Point3d(x, y, 0)
@@ -34,14 +35,15 @@ clr.AddReference("Grasshopper")
 import Grasshopper as gh
 
 
-def voronoi2D(nodePts):
+def voronoi2D(nodePts, boundary):
+    # type: (List[geo.Point], geo.Curve) -> List[geo.Curve]
     # Create a boundingbox and get its corners
-    bb = geo.BoundingBox(nodePts)
-    d = bb.Diagonal
-    dl = d.Length
-    f = dl / 15
-    bb.Inflate(f, f, f)
-    bbCorners = bb.GetCorners()
+    bbox = boundary.GetBoundingBox(True)
+    diagnoal_line = bbox.Diagonal
+    diagnoal_line_length = diagnoal_line.Length
+    # f = diagnoal_line_length / 15
+    # bbox.Inflate(f, f, f)
+    bboxCorners = bbox.GetCorners()
 
     # Create a list of nodes
     nodes = gh.Kernel.Geometry.Node2List()
@@ -51,7 +53,7 @@ def voronoi2D(nodePts):
 
     # Create a list of outline nodes using the BB
     outline = gh.Kernel.Geometry.Node2List()
-    for p in bbCorners:
+    for p in bboxCorners:
         n = gh.Kernel.Geometry.Node2(p.X, p.Y)
         outline.Append(n)
 
@@ -94,7 +96,8 @@ def main(seed_count, boundary_curve):
     seed_points = [
         get_random_point_in_curve_boundary(boundary_curve) for _ in range(seed_count)
     ]
-    voronoi_curves = voronoi2D(seed_points)
+    sc.sticky["seed_points"] = seed_points
+    voronoi_curves = voronoi2D(seed_points, boundary_curve)
     street_curves = offset_voronoi_edges(voronoi_curves, 1000)
 
     voronoi_regions = [geo.Brep.CreatePlanarBreps(curve)[0] for curve in voronoi_curves]
