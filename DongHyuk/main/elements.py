@@ -5,6 +5,7 @@ from shutil import rmtree
 from shapely.geometry import Polygon, LineString, Point, mapping
 from scipy.spatial import Delaunay
 from itertools import permutations, combinations
+from math import sqrt
 import numpy as np
 import rhino3dm as rh
 from copy import deepcopy
@@ -16,17 +17,24 @@ def replace_nan_with_str(data_dict):
                     
 def coords_to_rhino_point(coords):
             return rh.Point3d(coords[0],coords[1],0)
-                          
+
+def create_layer(doc:rh.File3dm, layer_name:str):
+        layer = rh.Layer()
+        layer.Name = layer_name
+        doc.Layers.Add(layer)                    
+
 class Element(ABC):
+
     doc_rh = rh.File3dm()
+
     @abstractmethod
     def build_to_rhino(self):
         pass
 
-
 class BuildingElement(Element):
     
     FLOOR_HEIGHT = 4.0
+    building_layer = rh.Layer()
     
     def __init__(self, dict_properties: dict):
         
@@ -37,6 +45,7 @@ class BuildingElement(Element):
         self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
         self.dictionary_prop = dict_properties
+        self.extrusion_id = None # Guid
         
         replace_nan_with_str(self.dictionary_prop)
         self.dictionary_prop["geometry"] = self.geometry
@@ -46,12 +55,11 @@ class BuildingElement(Element):
         points = rh.Point3dList([coords_to_rhino_point(coord) for coord in coords])
         
         poly_line = rh.Curve.CreateControlPointCurve(points,1)
-        Extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
-        Element.doc_rh.Objects.AddExtrusion(Extrusion)
+        extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
+        self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion)
         
     def __str__(self):
         return f"Building Element Object : Floor : {self.floor} | Name : {self.name} | Type : {self.type} | Usage : {self.usage}"
-
 
 class VegetationElement(Element):
     def __init__(self, dict_properties: dict):
@@ -67,7 +75,6 @@ class VegetationElement(Element):
         point = coords_to_rhino_point(coord)
     
         Element.doc_rh.Objects.AddPoint(point)
-
 
 class ContourElement(Element):
     
@@ -92,10 +99,10 @@ class ContourElement(Element):
         points = [rh.Point3d(coord[0],coord[1],self.elevation) for coord in coords]
         curve = rh.Curve.CreateControlPointCurve(points,1)
         ContourElement.curves.append(curve)
-        # Element.doc_rh.Objects.AddCurve(curve)
+        Element.doc_rh.Objects.AddCurve(curve)
 
     @classmethod
-    def build_to_surface(cls):
+    def __old_build_to_surface(cls):
         #Group by Elevation
         def __group_to_connect(data_list,elev_list):
             grouped_data = {}
@@ -136,12 +143,21 @@ class ContourElement(Element):
             return joined_curve
         
         def redirect_curves(curves:list):
-            pass
+            #Get sets of possible curves combinations in the same level
+            reversed_curves = deepcopy(curves)
+            for curves in reversed_curves : curves.Reverse()
+            possible_curves = zip(curves,reversed_curves)
             
-                        
-                        
-            
-            
+            for i in range(len(curves)+1):
+                combs = list(combinations(range(len(curves)),i))
+                curve_comb = []
+                for i,comb in enumerate(combs): 
+                    if i in comb:
+                        curve_comb.append(curves[i])
+                    elif i not in comb:
+                        curve_comb.append(reversed_curves[i])
+                connected_len(curve_comb)
+                    
         rep_elev_curve = {}
         for elev,curve_group in elev_grouped_curves.items():
             if len(curve_group) == 1:
@@ -196,6 +212,70 @@ class ContourElement(Element):
         for curve in ContourElement.curves:
             # print(curve.PointAtEnd.Z)
             pass
+   
+    @classmethod        
+    def build_to_surface(cls):
+        def __divide_curve(curve:rh.Curve,length:float):
+            #Get Length of Curve
+            if(isinstance(curve,rh.LineCurve)):
+                crv_len = curve.Line.Length
+                print(f'Line Length = {crv_len}')
+            else:
+                crv_len = curve.ToPolyline().Length
+                print(f'Polyline Length = {crv_len}')
+            
+            #Divide Curve by approximate length
+            div_num = int(crv_len/length)
+            if div_num == 0:
+                div_num = 1
+            
+            print(f'div_num = {div_num}')
+           
+           #Get Points of Curve by dividing parameters 
+            points = [] 
+            for i in range(div_num+1):
+                
+                new_pt = curve.PointAt(i/div_num * curve.Domain.T1)
+                print(f'param = {i/div_num * curve.Domain.T1} , point = {new_pt.X},{new_pt.Y},{new_pt.Z}')
+                points.append((new_pt.X,new_pt.Y,new_pt.Z))
+            print()
+            return points
+        
+        def __project_pt_to_XY(pt):
+            return (pt[0],pt[1])
+        
+        def __check_face_vertical(face_indices:list):
+            #Get Face Vertices
+            [ContourElement.divided_points[index] for index in face_indices]
+            point_A = ContourElement.divided_points[face_indices[0]]
+            point_B = ContourElement.divided_points[face_indices[1]]
+            point_C = ContourElement.divided_points[face_indices[2]]
+            vect_AB = [a_coord - b_coord for a_coord,b_coord in zip(point_A,point_B)]
+            vect_AC = [a_coord - c_coord for a_coord,c_coord in zip(point_A,point_C)]
+            if np.cross(vect_AB,vect_AC)[2] <= 1:
+                return True
+            else:
+                return False
+            
+        #Get Divided Points
+        crvs = ContourElement.curves
+        ContourElement.divided_points = []
+        for crv in crvs: ContourElement.divided_points.extend(__divide_curve(crv,ContourElement.resolution_of_division))
+        
+        #Get Face Indices by scipy.spatial.Delaunay
+        projected_points = [__project_pt_to_XY(pt) for pt in ContourElement.divided_points]
+        face_indices = Delaunay(np.array(projected_points)).simplices
+        
+        #Create Mesh + filter vertical faces
+        contour_mesh = rh.Mesh()
+        for pt in ContourElement.divided_points: contour_mesh.Vertices.Add(*pt) 
+        for face in face_indices:
+            if not __check_face_vertical(face):
+                contour_mesh.Faces.AddFace(*face)
+        
+        
+        #Add to Document
+        Element.doc_rh.Objects.AddMesh(contour_mesh)
         
         
 class RoadElement(Element):
