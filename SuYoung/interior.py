@@ -37,9 +37,13 @@ class Furniture:
         self.height = self.get_height()
         self.width,self.depth = self.get_width()
         self.axis = rg.Vector3d(0,-1,0)
-            
-    @property
-    def area(self):
+        self.area = self.get_area()
+    
+    def reset_bbox_by_room(self,room):
+        plane = rg.Plane(room.wall[1][0],-1 * room.wall[1].Direction, room.wall[2].Direction)
+        self.bbox = self.model.GetBoundingBox(plane)
+
+    def get_area(self):
         # 가구의 바닥 면적을 폴리라인으로 도출하는 함수
         bbox = self.bbox
         points = []
@@ -81,14 +85,19 @@ class Furniture:
         self.model.Transform(trans)
         self.bbox.Transform(trans)
 
-    def rotate(self, angle):
+    def Rotate(self, angle):
         # angle을 받으면 해당 각도만큼 rotate
         # angle = degree (float)
         angle = math.radians(angle)
         trans = rg.Transform.Rotation(angle,self.position)
-        self.model.Transform(trans)
-        self.bbox.Transform(trans)
-        self.axis.Transform(trans)
+        self.transform(trans)
+    
+    def transform(self,transform):
+        self.model.Transform(transform)
+        self.axis.Transform(transform)
+
+    def axis_align(self,target_axis = rg.Transform):
+        return rg.Transform.Rotation(self.axis,target_axis,self.position)
     
     @property
     def position(self):
@@ -119,7 +128,30 @@ class Table(Furniture):
         Furniture.__init__(self,Model)
         self.type = Type
         
-    def place():
+    def place(self,room):
+        if (self.type == "desk" ):
+            # 1. 방의 모양에 따라 축을 비교해 가구 배치            
+            # 1-1. 방이 가로형일 때: 축과 90도      
+            if (room.shape==1):
+                point = room.wall[1][0]
+                target_axis = -1 * room.wall[0].Direction                       
+            
+            # 1-2. 방이 정방,세로형일 때: 축과 180도
+            elif (room.shape==0):
+                point = room.wall[2][1]
+                target_axis = -1 * room.wall[1].Direction
+            
+            self.move(point)
+            trans = self.axis_align(target_axis)
+            self.transform(trans)
+            self.reset_bbox_by_room(room)
+            return
+
+            #2. 벽에 붙도록 위치 조정
+            corners = [rg.Point3d(pt) for pt in self.area.ToPolyline()]
+            for pt in corners:
+                if (room.region.Contains(pt,rg.Plane.WorldXY,0)==rg.PointContainment.Inside):
+                    self.move(pt)         
         return
 
 class Chair(Furniture):
@@ -127,7 +159,7 @@ class Chair(Furniture):
         Furniture.__init__(self,Model)
         self.type = Type
     
-    def place():
+    def place(self,room):
         return
         
 class Shelf(Furniture):
@@ -135,7 +167,7 @@ class Shelf(Furniture):
         Furniture.__init__(self,Model)
         self.type = Type
     
-    def place():
+    def place(self,room):
         return
 
 class Bed(Furniture):
@@ -144,55 +176,56 @@ class Bed(Furniture):
         self.type = Type
     
     def place(self,room):
-        # 1. 모서리에 가구 배치
+        #1. 모서리에 가구 위치
         point = room.wall[1][1]
         self.move(point)
-        
-        # 2. 방의 모양에 따라 축을 비교해 가구 회전
-        # 2-1. 방이 가로형일 때: 축과 90도
-        is_reverse = 1
-        
+
+        #2. 방의 형상에 따라 가구의 축 방향 정렬
         if (room.shape==1):
-            target_axis = rg.Vector3d(-room.axis.Y,room.axis.X,0)
-            test_pt = point + target_axis
-            if(room.region.Contains(test_pt,rg.Plane.WorldXY,0)==rg.PointContainment.Coincident):
-                is_reverse *= -1
-        
-        # 2-2. 방이 정방,세로형일 때: 축과 180도
+            target_axis = room.wall[2].Direction                          
+
         elif (room.shape==0):
-            target_axis = -1 * room.axis
+            target_axis = -1 * room.wall[1].Direction
         
-        dot_product = self.axis * target_axis
-        angle_rad = math.acos(dot_product)
-        degree = math.degrees(angle_rad * is_reverse)
-        self.rotate(degree)
-            
+        trans = self.axis_align(target_axis)
+        self.transform(trans)
+        self.reset_bbox_by_room(room)
+        return  
+
         #3. 벽에 붙도록 위치 조정
         corners = [rg.Point3d(pt) for pt in self.area.ToPolyline()]
         for pt in corners:
             if (room.region.Contains(pt,rg.Plane.WorldXY,0)==rg.PointContainment.Inside):
-                self.move(pt)
+                self.move(pt)         
+        return
         
 
 # 방 클래스   
 class Room:
     def __init__(self,plan=rg.Polyline):
-        self.plan = plan                            # rg.Polyline
-        self.door = rg.Line(plan.First,plan.Last)   # rg.Line
-        self.wall = self.plan.GetSegments()         # [rg.Line]
-        self.fur_type_list = []
-        self.possible_region = plan
-        self.placed_furniture=[]
-    
-    @property
-    def wall(self):
+        self.plan = plan                            # 평면 : rg.Polyline
+        self.door = rg.Line(plan.First,plan.Last)   # 문 : rg.Line
+        self.wall = self.get_wall()                 # 벽 : [rg.Line]
+        self.width = self.get_width()               # 너비 : float
+        self.depth = self.get_depth()               # 깊이 : float
+        self.region = self.get_region()             # 영역 : rg.PolylineCurve
+        self.axis = self.get_axis()                 # 축 : rg.Vector3D
+        self.shape = self.get_shape()               # 형상 : int
+        self.fur_type_list = []                     # 가구 타입 : [str]
+        self.possible_region = plan                 # 배치 가능 영역 : rg.Polyline
+        self.placed_furniture=[]                    # 배치된 가구 : [rg.Brep]
+        
+
+    def get_wall(self):
+        # 평면의 벽 선분을 도출하는 함수
+        # self -> [rg.Line]
         wall = self.plan.GetSegments()
         if (wall[0].Length<wall[-1].Length):
-            wall.reverse()
+            self.plan.Reverse()
+        wall = self.plan.GetSegments()
         return wall
     
-    @property
-    def region(self):
+    def get_region(self):
         # 방의 영역을 도출하는 함수 
         points = list(self.plan)
         points.append(points[0])
@@ -235,23 +268,19 @@ class Room:
 
         return  room
     
-    @property
-    def shape(self):
+    def get_shape(self):
         if (self.depth >= self.width):
             return 0        # 세로형, 정방형
         else:
             return 1        # 가로형
         
-    @property
-    def width(self):
+    def get_width(self):
         return self.wall[2].Length
         
-    @property
-    def depth(self):
+    def get_depth(self):
         return self.wall[1].Length
         
-    @property
-    def axis(self):
+    def get_axis(self):
         # 방의 축을 반환한다.(축: 사람이 방 내부로 들어오는 방향) -> rg.Vector3D
         line = rg.Line(self.door[0],self.door[1])
         center = line.PointAt(0.5)
