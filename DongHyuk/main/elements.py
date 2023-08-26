@@ -3,6 +3,7 @@ from json import dump
 from os import makedirs
 from shutil import rmtree
 from shapely.geometry import Polygon, LineString, Point, mapping
+from window import WindowMaker
 from scipy.spatial import Delaunay
 from itertools import permutations, combinations
 from math import sqrt
@@ -61,8 +62,7 @@ class BuildingElement(Element):
         poly_line = rh.Curve.CreateControlPointCurve(points,1)
         extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
         self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion)
-        
-        
+        Element.doc_rh.Objects.FindId(self.extrusion_id).Attributes.LayerIndex = BuildingElement.building_layer_ind
                 
     def __str__(self):
         return f"Building Element Object : Floor : {self.floor} | Name : {self.name} | Type : {self.type} | Usage : {self.usage}"
@@ -87,8 +87,9 @@ class VegetationElement(Element):
         coord = self.geometry['coordinates']
         point = coords_to_rhino_point(coord)
     
-        self.vegetaion_id = Element.doc_rh.Objects.AddPoint(point)
-        # Element.doc_rh.Objects.FindId(self.vegetation_id).Attributes = VegetationElement.vegetation_attribute 
+        self.vegetation_id = Element.doc_rh.Objects.AddPoint(point)
+        Element.doc_rh.Objects.FindId(self.vegetation_id).Attributes.LayerIndex = VegetationElement.vegetation_layer_ind
+
 
 class ContourElement(Element):
     
@@ -113,7 +114,6 @@ class ContourElement(Element):
         points = [rh.Point3d(coord[0],coord[1],self.elevation) for coord in coords]
         curve = rh.Curve.CreateControlPointCurve(points,1)
         ContourElement.curves.append(curve)
-        Element.doc_rh.Objects.AddCurve(curve)
 
     @classmethod
     def __old_build_to_surface(cls):
@@ -233,26 +233,21 @@ class ContourElement(Element):
             #Get Length of Curve
             if(isinstance(curve,rh.LineCurve)):
                 crv_len = curve.Line.Length
-                print(f'Line Length = {crv_len}')
             else:
                 crv_len = curve.ToPolyline().Length
-                print(f'Polyline Length = {crv_len}')
             
             #Divide Curve by approximate length
             div_num = int(crv_len/length)
             if div_num == 0:
                 div_num = 1
-            
-            print(f'div_num = {div_num}')
            
            #Get Points of Curve by dividing parameters 
             points = [] 
             for i in range(div_num+1):
                 
                 new_pt = curve.PointAt(i/div_num * curve.Domain.T1)
-                print(f'param = {i/div_num * curve.Domain.T1} , point = {new_pt.X},{new_pt.Y},{new_pt.Z}')
                 points.append((new_pt.X,new_pt.Y,new_pt.Z))
-            print()
+
             return points
         
         def __project_pt_to_XY(pt):
