@@ -1,6 +1,7 @@
 from constants.options import *
 from zipfile import ZipFile
 from operator_ import Operator
+from os import path
 import subprocess
 
 
@@ -50,6 +51,7 @@ class SMA:
             self.operator.find_elements("CONTOUR")
             self.operator.find_elements("ROAD")
             self.operator.find_elements("VEGETATION")
+            self.operator.find_elements("BORDER")
             self.operator.bake_elements_tojson()
             self.operator.bake_elements_to_rhino()
             self.operator.save_rhino_object()
@@ -61,10 +63,10 @@ class SMA:
     #1 -3 | Get Result
     def get_result(self):
         rhino_exe_path = r'C:\Program Files\Rhino 6\System\Rhino.exe'
-        file_to_open = '.\\DongHyuk\\main\\result\\result.3dm'
-        script_to_open = 'C:\\Users\\Donghyeok\\Documents\\GitHub\\project-2023-1\\DongHyuk\\main\\rhino_postprocess.py'
+        file_to_open = path.abspath('.\\DongHyuk\\main\\result\\result.3dm')
+        script_to_open = path.abspath(".\\DongHyuk\\main\\rhino_postprocess.py")
         script_call = "-_RunPythonScript {0}".format(script_to_open)
-        call_script = '"{0}" /nosplash /runscript="{1}", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
+        call_script = '"{0}" /nosplash /runscript="{1} _OneView _Enter _SelAll _Zoom S", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
         subprocess.call(call_script)
-    
+
     

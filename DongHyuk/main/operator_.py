@@ -5,7 +5,7 @@ import geopandas as gpd
 import json
 
 
-from elements import Element, RoadElement, BuildingElement, VegetationElement, ContourElement
+from elements import Element, RoadElement, BuildingElement, VegetationElement, ContourElement, BorderElement
 
 
 class Operator:
@@ -29,6 +29,7 @@ class Operator:
         "BUILDING": "B001",
         "VEGETATION": "D003",
         "CONTOUR": "F0010000",
+        "BORDER": "H001"
     }
 
     # 2 | Properties
@@ -90,6 +91,8 @@ class Operator:
                 ContourElement(info) for info in dict_geoinfos
             ]  # Return List<ContourElement> from shp data
             self.contours.sort(key=lambda x: x.elevation)
+        elif index == "BORDER":
+            self.border = BorderElement(dict_geoinfos[0])
         # Throws Exception when index is not one of 'BUILDING', 'ROAD', 'VEGETATION', 'CONTOUR'
         else:
             print(
@@ -131,11 +134,15 @@ class Operator:
         for vegetation in self.vegetations:
             vegetation.build_to_rhino()
 
-        # 3 - 3 - 4 | Bake Contours
+        # 3 - 3 - 4 | Bake Border
+        self.border.build_to_rhino()
+        
+        # 3 - 3 - 5 | Bake Contours
         for contour in self.contours:
             contour.build_to_rhino()
-            
         ContourElement.build_to_surface()
+        
+        
         
     # 3 - 4 | Save Rhino Object
     def save_rhino_object(self):

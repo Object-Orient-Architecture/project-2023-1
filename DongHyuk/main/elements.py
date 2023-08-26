@@ -17,7 +17,7 @@ def replace_nan_with_str(data_dict):
                     data_dict[key] = 'NaN'
                     
 def coords_to_rhino_point(coords):
-            return rh.Point3d(coords[0],coords[1],0)
+            return rh.Point(rh.Point3d(coords[0],coords[1],0))
 
 def create_layer(doc:rh.File3dm, layer_name:str):
         layer = rh.Layer()
@@ -37,9 +37,12 @@ class BuildingElement(Element):
     FLOOR_HEIGHT = 4.0
     building_layer = rh.Layer()
     building_layer.Name = "Building"
+    building_layer.Color = (255,0,0,255)
     building_layer_ind = Element.doc_rh.Layers.Add(building_layer)
-    building_attribute = rh.ObjectAttributes()
-    building_attribute.LayerIndex = building_layer_ind
+    
+    building_attr = rh.ObjectAttributes()
+    building_attr.LayerIndex = building_layer_ind
+    
     
     def __init__(self, dict_properties: dict):
         
@@ -56,13 +59,16 @@ class BuildingElement(Element):
         self.dictionary_prop["geometry"] = self.geometry
 
     def build_to_rhino(self):
+        if self.type == "무벽건물":
+            return None
         coords = self.geometry['coordinates'][0]
-        points = rh.Point3dList([coords_to_rhino_point(coord) for coord in coords])
+        points = rh.Point3dList([rh.Point3d(coord[0],coord[1],0) for coord in coords])
         
         poly_line = rh.Curve.CreateControlPointCurve(points,1)
         extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
-        self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion)
-        Element.doc_rh.Objects.FindId(self.extrusion_id).Attributes.LayerIndex = BuildingElement.building_layer_ind
+        
+        self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion,BuildingElement.building_attr)
+        
                 
     def __str__(self):
         return f"Building Element Object : Floor : {self.floor} | Name : {self.name} | Type : {self.type} | Usage : {self.usage}"
@@ -71,9 +77,11 @@ class VegetationElement(Element):
     
     vegetation_layer = rh.Layer()
     vegetation_layer.Name = 'Vegetation'
+    vegetation_layer.Color = (0,255,0,255)
     vegetation_layer_ind = Element.doc_rh.Layers.Add(vegetation_layer)
-    vegetation_attribute = rh.ObjectAttributes()
-    vegetation_attribute.LayerIndex = vegetation_layer_ind
+
+    vegetation_attr = rh.ObjectAttributes()
+    vegetation_attr.LayerIndex = vegetation_layer_ind
     
     def __init__(self, dict_properties: dict):
         self.geometry_object = dict_properties["geometry"]
@@ -87,15 +95,19 @@ class VegetationElement(Element):
         coord = self.geometry['coordinates']
         point = coords_to_rhino_point(coord)
     
-        self.vegetation_id = Element.doc_rh.Objects.AddPoint(point)
-        Element.doc_rh.Objects.FindId(self.vegetation_id).Attributes.LayerIndex = VegetationElement.vegetation_layer_ind
-
+        self.vegetation_id = Element.doc_rh.Objects.Add(point,VegetationElement.vegetation_attr)
 
 class ContourElement(Element):
     
+    #Clas Properties
     resolution_of_division = 10
     divided_points = []
     curves = []
+    
+    contour_layer = rh.Layer()
+    contour_layer.Name = 'Contour'
+    contour_layer.Color = (0,0,255,255)
+    contour_layer_ind = Element.doc_rh.Layers.Add(contour_layer)
     
     def __init__(self, dict_properties: dict):
         self.elevation = dict_properties["등고수치"]
@@ -113,10 +125,10 @@ class ContourElement(Element):
         #move each points to elevation(z-axis)
         points = [rh.Point3d(coord[0],coord[1],self.elevation) for coord in coords]
         curve = rh.Curve.CreateControlPointCurve(points,1)
+        
         ContourElement.curves.append(curve)
 
     @classmethod
-
     def __old_build_to_surface(cls):
         #Group by Elevation
         def __group_to_connect(data_list,elev_list):
@@ -266,11 +278,38 @@ class ContourElement(Element):
                 return True
             else:
                 return False
+        
+        def __remove_duplicates(point_list):
+            unique_points = set()
+            result = []
             
+            for point in point_list:
+                if point not in unique_points:
+                    unique_points.add(point)
+                    result.append(point)
+            
+            return result  
+        
         #Get Divided Points
         crvs = ContourElement.curves
         ContourElement.divided_points = []
         for crv in crvs: ContourElement.divided_points.extend(__divide_curve(crv,ContourElement.resolution_of_division))
+        #Adjust Border Points
+        ##Get contour_curves' end points
+        crv_end_pts_list = [crv.PointAtEnd for crv in crvs] + [crv.PointAtStart for crv in crvs]
+        crv_end_pts = rh.PointCloud()
+        for pt in crv_end_pts_list: crv_end_pts.Add(pt)
+        ##Find closest point to each border point
+        for border_pt in BorderElement.coords:
+            closest_pt_ind = crv_end_pts.ClosestPoint(rh.Point3d(*border_pt))
+            closest_pt = crv_end_pts.PointAt(closest_pt_ind)
+            border_pt = list(border_pt)
+            border_pt[2] = closest_pt.Z
+            border_pt = tuple(border_pt)
+            ContourElement.divided_points.append(border_pt)
+        
+        #Remove Duplicates
+        ContourElement.divided_points = __remove_duplicates(ContourElement.divided_points)
         
         #Get Face Indices by scipy.spatial.Delaunay
         projected_points = [__project_pt_to_XY(pt) for pt in ContourElement.divided_points]
@@ -278,29 +317,23 @@ class ContourElement(Element):
         
         #Create Mesh + filter vertical faces
         contour_mesh = rh.Mesh()
-        for pt in ContourElement.divided_points: contour_mesh.Vertices.Add(*pt) 
+        for pt in ContourElement.divided_points: 
+            contour_mesh.Vertices.Add(*pt)
         for face in face_indices:
             if not __check_face_vertical(face):
                 contour_mesh.Faces.AddFace(*face)
         
-        
         #Add to Document
-        Element.doc_rh.Objects.AddMesh(contour_mesh)
-        
-    @classmethod
-    def build_to_surface(cls):
-        #Divide Curves according to length
-        crvs = ContourElement.curves
-        
-        # Project divided points on XY Plane
-        
-        # Find Delaunay Triangulation (simplices) by scipy.spatial.Delaunay
-        
-        #create Mesh (referencing test_del.py)
-        ## Original Point & Provided Faces
-        ## **It is important that original points and projected points are in the same order
+        obj_attr = rh.ObjectAttributes()
+        obj_attr.LayerIndex = ContourElement.contour_layer_ind
+        ContourElement.mesh_id = Element.doc_rh.Objects.AddMesh(contour_mesh,obj_attr)
         
 class RoadElement(Element):
+    
+    road_layer = rh.Layer()
+    road_layer.Name = 'Road'
+    road_layer_ind = Element.doc_rh.Layers.Add(road_layer)
+    
     def __init__(self, dict_properties: dict):
         self.geometry_object = dict_properties["geometry"]
         self.geometry = mapping(dict_properties["geometry"]) #dict
@@ -314,7 +347,26 @@ class RoadElement(Element):
         points = [rh.Point3d(coord[0],coord[1],0) for coord in coords]
         curve = rh.Curve.CreateControlPointCurve(points,1)
         
-        Element.doc_rh.Objects.AddCurve(curve)
-                
+        self.road_id = Element.doc_rh.Objects.AddCurve(curve)
+        Element.doc_rh.Objects.FindId(self.road_id).Attributes.LayerIndex = RoadElement.road_layer_ind
 
-
+class BorderElement(Element):
+    
+    border_layer = rh.Layer()
+    border_layer.Name = 'Border'
+    border_layer.Color = (255,255,0,255)
+    border_layer_ind = Element.doc_rh.Layers.Add(border_layer)
+    
+    def __init__(self, dict_properties: dict):
+        self.geometry_object = dict_properties["geometry"]
+        self.geometry = mapping(dict_properties["geometry"])
+        BorderElement.coords = [(coord[0],coord[1],0) for coord in list(self.geometry['coordinates'])[:-1]]
+        
+    def build_to_rhino(self):
+        coords = self.geometry['coordinates']
+        points = [rh.Point3d(coord[0],coord[1],0) for coord in coords]
+        curve = rh.Curve.CreateControlPointCurve(points,1)
+        
+        obj_attr = rh.ObjectAttributes()
+        obj_attr.LayerIndex = BorderElement.border_layer_ind
+        self.border_id = Element.doc_rh.Objects.AddCurve(curve,obj_attr)
