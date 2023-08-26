@@ -62,7 +62,9 @@ class SMA:
     def get_result(self):
         rhino_exe_path = r'C:\Program Files\Rhino 6\System\Rhino.exe'
         file_to_open = '.\\DongHyuk\\main\\result\\result.3dm'
-        command = [rhino_exe_path, file_to_open]
-        subprocess.run(command)
+        script_to_open = 'C:\\Users\\Donghyeok\\Documents\\GitHub\\project-2023-1\\DongHyuk\\rhino_postprocess.py'
+        script_call = "-_RunPythonScript {0}".format(script_to_open)
+        call_script = '"{0}" /nosplash /runscript="{1}", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
+        subprocess.call(call_script)
     
     
