@@ -23,9 +23,9 @@ fur_list = []       # 가구 : [rg.Brep]
 # 가구 종류 정의
 type_table = {
             "table": ("table", "desk", "coffe table") ,
-            "chair": ("chair", "sofa big", "sofa small"),
+            "chair": ("chair", "sofa long", "sofa"),
             "bed" : "bed",
-            "shelf" : ("shelf small", "shelf big","closet")
+            "shelf" : ("shelf", "shelf long","closet")
             }
 
 
@@ -78,8 +78,7 @@ class Furniture:
         # location을 받으면 해당 위치로 translate
         move_vector = location - self.position
         trans = rg.Transform.Translation(move_vector)
-        self.model.Transform(trans)
-        self.area.Transform(trans)
+        self.transform(trans)
 
     def Rotate(self, angle):
         # angle을 받으면 해당 각도만큼 rotate
@@ -92,9 +91,11 @@ class Furniture:
         self.model.Transform(transform)
         self.area.Transform(transform)
         self.axis.Transform(transform)
+        self.axis.Unitize()
 
-    def axis_align(self,target_axis = rg.Transform):
-        return rg.Transform.Rotation(self.axis,target_axis,self.position)
+    def axis_align(self,target_axis):
+        trans =  rg.Transform.Rotation(self.axis,target_axis,self.position)
+        self.transform(trans)
     
     @property
     def position(self):
@@ -119,6 +120,11 @@ class Furniture:
         width = max(lines,key=lambda x:x.Length).Length
         depth = min(lines,key=lambda x:x.Length).Length
         return width,depth
+    
+    @property
+    def region(self):
+        # 가구의 점유 영역을 도출하는 함수
+        return self.area.Offset(rg.Plane.WorldXY,900,0,rg.CurveOffsetCornerStyle.Sharp)
         
 class Table(Furniture):
     def __init__( self, Model = rg.Brep, Type = str ):
@@ -139,8 +145,7 @@ class Table(Furniture):
                 target_axis = -1 * room.wall[1].Direction
             
             self.move(point)
-            trans = self.axis_align(target_axis)
-            self.transform(trans)
+            self.axis_align(target_axis)
 
             #2. 벽에 붙도록 위치 조정
             corners = [rg.Point3d(pt) for pt in self.area.ToPolyline()]
@@ -155,9 +160,17 @@ class Chair(Furniture):
         self.type = Type
     
     def place(self,room):
+        # 침실에 놓이는 의자일 경우
         if (room.type == "침실") and (self.type == "chair"):
-            return
-        return
+            # 책상의 위치를 탐색하여 점과 방향 설정
+            for fur in room.placed_furniture:
+                if (fur.type == "desk"):
+                    point = fur.position + (fur.axis * (fur.depth/2 + self.depth/2)) 
+                    target_axis = fur.axis * -1
+            # 이동 및 축 정렬
+            self.move(point)
+            self.axis_align(target_axis)
+
         
 class Shelf(Furniture):
     def __init__( self, Model = rg.Brep, Type = str ):
@@ -184,8 +197,7 @@ class Bed(Furniture):
         elif (room.shape==0):
             target_axis = -1 * room.wall[1].Direction
         
-        trans = self.axis_align(target_axis)
-        self.transform(trans)
+        self.axis_align(target_axis)
 
         #3. 벽에 붙도록 위치 조정
         corners = [rg.Point3d(pt) for pt in self.area.ToPolyline()]
@@ -199,17 +211,25 @@ class Bed(Furniture):
 class Room:
     def __init__(self,plan=rg.Polyline):
         self.plan = plan                                # 평면 : rg.Polyline
+        self.region = self.get_region()                 # 영역 : rg.PolylineCurve
         self.door = rg.Line(plan.First,plan.Last)       # 문 : rg.Line
+        self.axis = self.get_axis()                     # 축 : rg.Vector3D
         self.wall = self.get_wall()                     # 벽 : [rg.Line]
         self.width = self.get_width()                   # 너비 : float
         self.depth = self.get_depth()                   # 깊이 : float
-        self.region = self.get_region()                 # 영역 : rg.PolylineCurve
-        self.axis = self.get_axis()                     # 축 : rg.Vector3D
         self.shape = self.get_shape()                   # 형상 : int
         self.fur_type_list = []                         # 가구 타입 : [str]
-        self.possible_region = plan.ToPolylineCurve()   # 배치 가능 영역 : rg.Polyline
+        self.possible_region = self.init_region()         # 배치 가능 영역 : rg.PolylineCurve
         self.placed_furniture = []                      # 배치된 가구 : [rg.Brep]
         self.furnitures = []                            # 필요한 가구
+    
+    def init_region(self):
+        full_region = self.region
+        if len(self.wall)>3:
+            door_region = rg.PolylineCurve([self.door[0],self.door[1],self.door[1]+self.axis*self.door.Length,self.door[0]+self.axis*self.door.Length,self.door[0]])
+            return rg.PolylineCurve.CreateBooleanDifference(full_region,door_region)[0]
+        else:
+            return full_region
         
     def get_wall(self):
         '''
@@ -217,7 +237,11 @@ class Room:
         self -> [rg.Line]
         '''
         wall = self.plan.GetSegments()
-        if (wall[0].Length<wall[-1].Length):
+        vect = wall[0].Direction
+        vect.Unitize()
+        if len(wall) == 5 and (wall[0].Length<wall[-1].Length):
+            self.plan.Reverse()
+        elif len(wall) == 4 and (vect == self.axis):
             self.plan.Reverse()
         wall = self.plan.GetSegments()
         return wall
@@ -295,13 +319,11 @@ class Room:
         return  arrow
     
     def update_region(self, fur):
-        self.possible_region
+        impossible_region = fur.area
+        remain_region = rg.PolylineCurve.CreateBooleanDifference(self.possible_region,impossible_region)
+        if(remain_region):
+            self.possible_region = remain_region[0]
 
-    @property
-    def possible_region(self):
-        # 플랜에서 placed furniture를 제외한 영역을 리턴한다.
-        #self.plan self.placed_furniture
-        return
     
     def generate(self):
         for fur in self.furnitures:
@@ -316,8 +338,9 @@ class LivingRoom(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
         Room.__init__(self,Plan)
         self.type = Type
-        self.fur_type_list = ["sofa","coffe table","shelf small"]
+        self.fur_type_list = ["sofa long","coffe table","shelf long","sofa","shelf"]
         self.furnitures = self.get_furniture_list()
+
                
 class BedRoom(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
@@ -325,6 +348,7 @@ class BedRoom(Room):
         self.type = Type
         self.fur_type_list = ["bed","desk","chair","closet"]
         self.furnitures = self.get_furniture_list()
+        self.corner = [self.wall[0][1],self.wall[1][1],self.wall[2][1],self.wall[3][1]]
         
 class Kitchen(Room):
     def __init__(self,Plan=rg.Polyline,Type=str):
