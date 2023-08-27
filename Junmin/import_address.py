@@ -1,5 +1,6 @@
 import requests
 import json
+import geopandas
 
 class CoordinateFromAddress:
 
@@ -62,7 +63,7 @@ class UsabilityCode:
             return dict_key
         else:
             print ("님 인터넷 확인좀")
-# test = CoordinateFromAddress("관천로 21", "27E280E5-0E68-3751-85C5-2802D1FA2BD1")
+test = CoordinateFromAddress("관천로 21", "27E280E5-0E68-3751-85C5-2802D1FA2BD1")
 
 
 #shapely polygon to make whatever
@@ -106,13 +107,13 @@ class BBoxFromCoordinate:
             + key
         )
         response = requests.get(url)
+        response.encoding = 'UTF-8'
         if response.status_code == 200:
-            json_data = response.text
             try:
-                geojson = json.loads(json_data)
+                geojson = response.json()
                 return geojson
             except:
-                print ("problem reading geojson")
+                print ("none")
         else:
             print('인터넷 확인 ㄱㄱ')
 
@@ -132,8 +133,6 @@ class BBoxFromCoordinate:
                 
             return poly_list
         
-        
-# bboxtest = BBoxFromCoordinate(test.x, test.y, 20)
-# print(bboxtest.get_bbox_data(seq = "12623",key = "88c6b251809f4831a79145d085e07ded"))
-# print(bboxtest.make_polygon())
-# # 88c6b251809f4831a79145d085e07ded
+
+
+# 88c6b251809f4831a79145d085e07ded

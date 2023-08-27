@@ -54,10 +54,6 @@ class InterestPostProcess:
                         self.model.file3dm.Objects.AddExtrusion(Extrusion_down)
 
 
-                
-                
-                success = self.model.build_to_rhino()
-
         
                           
 class BuildingPostProcess: 
@@ -73,6 +69,7 @@ class BuildingPostProcess:
 
             poly_line = rh.Curve.CreateControlPointCurve(points,1)
 
+            # poly_line.ClosedCurveOrientation
             
 
             Extrusion_up = rh.Extrusion().Create(planarCurve = poly_line, height =  float(height), cap = True)

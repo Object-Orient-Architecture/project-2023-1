@@ -16,8 +16,10 @@ class AbnormalCheck:
         self.code_dict = addr.UsabilityCode(key = code_key).code_list
         self.interest_list = []
 
+        matches = ["(연속주제)", "건물통합정보_마스터"]
         for seq in seq_json:
-            self.check_loop(seq=seq, bbox=bbox, nsdi_key=nsdi_key, code_key=code_key)
+            if ("(연속주제)" in seq["OBJ_KNAME"]) or ("건물통합정보" in seq["OBJ_KNAME"]):
+                self.check_loop(seq=seq, bbox=bbox, nsdi_key=nsdi_key, code_key=code_key)
 
     def check_loop(self, seq: dict, bbox:addr.BBoxFromCoordinate, nsdi_key:str, code_key:str):
         # seq를 훑으며 특이점을 찾습니다.
@@ -45,8 +47,8 @@ class AbnormalCheck:
                 interset_return = self.check_interest(name_seq, interest, polylist_seq)
                 self.interest_list.append(interset_return)
 
-            elif "건물통합정보_마스터" in name_seq:
-                
+            elif "건물통합정보" in name_seq:
+                print ("건물정보를 찾았습니다.")
                 self.use_dict = self.check_building(name_seq, polylist_seq, code_key)
 
 
@@ -101,10 +103,16 @@ class AbnormalCheck:
             code_key = prop["USABILITY"]
 
             if code_key :
-                current_use = self.code_dict[code_key]
-                current_floor = int(prop["GRND_FLR"])
-                current_BC = prop["BC_RAT"]
-                current_VL = prop["VL_RAT"]
+                try:
+                    current_use = self.code_dict[code_key]
+                except:
+                    current_use = "미정"
+                try:
+                    current_floor = int(prop["GRND_FLR"])
+                except:
+                    current_floor = 0
+                # current_BC = prop["BC_RAT"]
+                # current_VL = prop["VL_RAT"]
 
                 new_buiding = Building(floor=current_floor, polygon=poly)
 
