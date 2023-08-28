@@ -40,7 +40,10 @@ class Furniture:
         self.axis = rg.Vector3d(0,-1,0)        
 
     def get_area(self):
-        # 가구의 바닥 면적을 폴리라인으로 도출하는 함수
+        '''
+        가구의 바닥 면적을 폴리라인으로 도출하는 함수
+        self -> rg.PolylineCurve
+        '''
         bbox = self.bbox
         points = []
         floor = min(bbox.GetCorners(),key=lambda x: x.Z).Z
@@ -53,8 +56,11 @@ class Furniture:
         return area
     
     def set_fur_type(self,fur_type,type_table = dict):
-        # 가구의 상세타입을 입력하면 자동으로 클래스를 생성하는 함수
-        # fur_type = 가구의 상세타입, type_table = 타입을 정리한 테이블
+        '''
+        가구의 상세타입을 입력하면 자동으로 클래스를 생성하는 함수
+        fur_type : 가구의 상세타입, type_table : 타입을 정리한 테이블
+        self , fur_type : str , type_table : dict -> Furniture
+        '''
         
         for type in type_table:
             
@@ -75,45 +81,58 @@ class Furniture:
         return furniture                
                            
     def move(self, location = rg.Point3d):
-        # location을 받으면 해당 위치로 translate
+        '''
+        위치를 입력받으면 해당 위치로 이동하는 함수
+        self, location : rg.Point3D -> None
+        '''
         move_vector = location - self.position
         trans = rg.Transform.Translation(move_vector)
         self.transform(trans)
 
     def Rotate(self, angle):
-        # angle을 받으면 해당 각도만큼 rotate
-        # angle = degree (float)
+        '''
+        각도를 입력받으면 해당 각도만큼 회전하는 함수
+        self, angle : float -> None
+        '''
         angle = math.radians(angle)
         trans = rg.Transform.Rotation(angle,self.position)
         self.transform(trans)
     
     def transform(self,transform):
+        '''
+        트랜스폼 매트릭스를 입력받으면 model, area, axis를 변형하는 함수
+         self, transform : rg.Transform -> None
+        '''
         self.model.Transform(transform)
         self.area.Transform(transform)
         self.axis.Transform(transform)
         self.axis.Unitize()
 
-    def axis_align(self,target_axis):
+    def axis_align(self,target_axis=rg.Vector3d):
+        '''
+        목표 축을 입력하면 해당 축에 가구의 축을 정렬하는 함수
+        self, target_axis : rg.Vector3D -> None
+        '''
         trans =  rg.Transform.Rotation(self.axis,target_axis,self.position)
         self.transform(trans)
     
     @property
     def position(self):
-        # 가구의 위치를 도출하는 함수
+        '''가구의 위치를 도출하는 함수'''
         return self.area.ToPolyline().CenterPoint()
     
     def get_height(self):
-        # 가구의 높이를 도출하는 함수
+        '''가구의 높이를 도출하는 함수'''
 
         bbox = self.bbox
         corners = bbox.GetCorners()
         maxPt = max(corners,key=lambda x: x.Z)
         minPt = min(corners,key=lambda x: x.Z)
         
-        return maxPt.Z - minPt.Z
+        return float(maxPt.Z - minPt.Z)
     
     def get_width(self):
-        # 가구의 너비와 깊이를 도출하는 함수
+        '''가구의 너비와 깊이를 도출하는 함수'''
 
         area = self.area.ToPolyline()
         lines = area.GetSegments()
@@ -123,7 +142,11 @@ class Furniture:
     
     @property
     def region(self):
-        # 가구의 점유 영역을 도출하는 함수
+        '''
+        가구의 점유 영역 (가구 영역 + 통로 900) 을 도출하는 함수
+        self -> region : rg.PolylineCurve
+        '''
+
         return self.area.Offset(rg.Plane.WorldXY,900,0,rg.CurveOffsetCornerStyle.Sharp)
         
 class Table(Furniture):
@@ -219,11 +242,15 @@ class Room:
         self.depth = self.get_depth()                   # 깊이 : float
         self.shape = self.get_shape()                   # 형상 : int
         self.fur_type_list = []                         # 가구 타입 : [str]
-        self.possible_region = self.init_region()         # 배치 가능 영역 : rg.PolylineCurve
+        self.possible_region = self.init_region()       # 배치 가능 영역 : rg.PolylineCurve
         self.placed_furniture = []                      # 배치된 가구 : [rg.Brep]
         self.furnitures = []                            # 필요한 가구
     
     def init_region(self):
+        '''
+        방의 영역을 초기화 (방의 영역 - 문의 회전 영역) 하는 함수 
+        self -> region : rg.PolylineCurve
+        '''
         full_region = self.region
         if len(self.wall)>3:
             door_region = rg.PolylineCurve([self.door[0],self.door[1],self.door[1]+self.axis*self.door.Length,self.door[0]+self.axis*self.door.Length,self.door[0]])
@@ -255,8 +282,9 @@ class Room:
         return  rg.PolylineCurve(points)
 
     def get_furniture_list(self):
-        # 방의 타입에 맞는 가구를 클래스로 만들어 지정한 리스트에 저장하는 함수
-        
+        '''
+        방의 타입에 맞는 가구를 클래스로 만들어 지정한 리스트에 저장하는 함수
+        '''
         furniture_list = []
         
         for type in self.fur_type_list:
@@ -295,19 +323,32 @@ class Room:
         return  room
     
     def get_shape(self):
+        '''
+        방의 형태를 반환하는 함수
+        self -> shape: [int 0 : 세로,정방형 / int 1 : 가로형] 
+        '''
         if (self.depth >= self.width):
             return 0        # 세로형, 정방형
         else:
             return 1        # 가로형
         
     def get_width(self):
-        return self.wall[2].Length
+        '''
+        방의 너비를 반환하는 함수
+        '''
+        return float(self.wall[2].Length)
         
     def get_depth(self):
-        return self.wall[1].Length
+        '''
+        방의 깊이를 반환하는 함수
+        '''
+        return float(self.wall[1].Length)
         
     def get_axis(self):
-        # 방의 축을 반환한다.(축: 사람이 방 내부로 들어오는 방향) -> rg.Vector3D
+        '''
+        방의 축을 반환하는 함수(축: 사람이 방 내부로 들어오는 방향) 
+        self -> axis : rg.Vector3D
+        '''
         line = rg.Line(self.door[0],self.door[1])
         center = line.PointAt(0.5)
         trans = rg.Transform.Rotation(math.radians(90),rg.Vector3d.ZAxis,center)      
@@ -319,6 +360,10 @@ class Room:
         return  arrow
     
     def update_region(self, fur):
+        '''
+        가구가 배치 가능한 영역을 갱신하는 함수
+        self, fur : Furniture -> None 
+        '''
         impossible_region = fur.area
         remain_region = rg.PolylineCurve.CreateBooleanDifference(self.possible_region,impossible_region)
         if(remain_region):
@@ -326,12 +371,18 @@ class Room:
 
     
     def generate(self):
+        '''
+        방에 맞는 가구를 가상으로 배치하는 함수
+        '''
         for fur in self.furnitures:
             fur.place(self)
             self.placed_furniture.append(fur)
             self.update_region(fur)
     
     def show(self):
+        '''
+        방의 가구를 라이노 상에 배치하는 함수
+        '''
         return [fur.model for fur in self.placed_furniture]           
 
 class LivingRoom(Room):
