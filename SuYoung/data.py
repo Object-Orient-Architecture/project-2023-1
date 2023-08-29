@@ -59,4 +59,5 @@ def BrepfromFilebyName(file,type=str):
     
     doc = get_external_doc(file)
     object = find_obj_by_name(doc,type)
+    doc.CloseDocument
     return get_geometry(object)
