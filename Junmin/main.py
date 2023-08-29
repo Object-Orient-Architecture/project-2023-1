@@ -12,7 +12,7 @@ your_nsdi_key = "88c6b251809f4831a79145d085e07ded"
 your_code_key = "BNoOz%2BvJj4mb3cjDIrHx8%2FTWz0JeUmbBmpUWffNOwXmkUnOc21ivl6ra6OOcKby5wd0LNs9Eq6TzqvP34oZy7A%3D%3D"
 
 # 바운딩 박스의 반경 값입니다.
-your_bound = 2000
+your_bound = 350
 class Main:
     def __init__(self) -> None:
         pass
@@ -31,52 +31,36 @@ class Main:
         # 찾은 좌표를 바운딩 박스로 제작합니다.
         self.bbox_centre = addr.BBoxFromCoordinate(self.coordinate_centre.x, self.coordinate_centre.y, self.bound)
 
-        self.north_coord = self.bbox_centre.north
-        self.south_coord = self.bbox_centre.south
-        self.east_coord = self.bbox_centre.east
-        self.west_coord = self.bbox_centre.west
+        self.four_direction_coord = [
+            self.bbox_centre.east, 
+            self.bbox_centre.west, 
+            self.bbox_centre.north,
+            self.bbox_centre.south
+        ]
 
     def get_four_direction_bbox (self):
-        self.bbox_north = addr.BBoxFromCoordinate(self.north_coord[0], self.north_coord[1], self.bound)
-        self.bbox_south = addr.BBoxFromCoordinate(self.south_coord[0], self.south_coord[1], self.bound)
-        self.bbox_east = addr.BBoxFromCoordinate(self.east_coord[0], self.east_coord[1], self.bound)
-        self.bbox_west = addr.BBoxFromCoordinate(self.west_coord[0], self.west_coord[1], self.bound)
-
+        self.four_direction_bbox = [
+            addr.BBoxFromCoordinate(coord[0],coord[1], self.bound) 
+            for coord in self.four_direction_coord
+        ]
         self.seqjson_centre = self.bbox_centre.get_seq_data(key = self.nsdi_key)
 
     def get_four_direction_abnormal(self):
         # seq를 훑으며 특이점을 찾습니다
 
-        # abnormal_centre = check.AbnormalCheck(seq_json=seqjson_centre, bbox=bbox_centre, nsdi_key=your_nsdi_key, code_key=your_code_key)
+        self.four_direction_abnormal = [
+            check.AbnormalCheck(
+                seq_json=self.seqjson_centre, 
+                bbox=bbox,
+                nsdi_key=self.nsdi_key, 
+                code_key=self.code_key
+            )
+            for bbox in self.four_direction_bbox
+        ]
 
-        self.abnormal_north = check.AbnormalCheck(
-            seq_json=self.seqjson_centre, 
-            bbox=self.bbox_north ,
-            nsdi_key=self.nsdi_key, 
-            code_key=self.code_key
-        )
-        self.abnormal_south = check.AbnormalCheck(
-            seq_json=self.seqjson_centre, 
-            bbox=self.bbox_south , 
-            nsdi_key=self.nsdi_key, 
-            code_key=self.code_key
-        )
-        self.abnormal_west = check.AbnormalCheck(
-            seq_json=self.seqjson_centre, 
-            bbox=self.bbox_west , 
-            nsdi_key=self.nsdi_key, 
-            code_key=self.code_key
-        )
-        self.abnormal_east = check.AbnormalCheck(
-            seq_json=self.seqjson_centre, 
-            bbox=self.bbox_east , 
-            nsdi_key=self.nsdi_key, 
-            code_key=self.code_key
-        )
-        try:
-            usability_north = self.abnormal_north.use_dict
-        except:
-            usability_north = False
+        for abnormal in self.four_direction_abnormal:
+            
+
         try:
             usability_south = self.abnormal_south.use_dict
         except:

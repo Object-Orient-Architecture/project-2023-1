@@ -2,27 +2,43 @@ import matplotlib.pyplot as plt
 import import_address as addr
 
 class Building:
+    """
+    빌딩의 정보를 저장하는 클래스
+    """
     def __init__ (self, floor: int, polygon):
+        # type: (int, shapely.polygon) -> None
         self.floor = floor
         self.polygon = polygon
 
 class Interest:
+    """
+    흥미로운 주제를 구성하는 구역을 저장하는 클래스
+    """
     def __init__ (self, name: str, polygons:list):
+        # type: (shapely.polygon, str) -> None
         self.name = name
         self.polygons = polygons
 
 class AbnormalCheck:
+    """
+    특이한 지역과 특이한 건물들을 찾아준다.
+    """
     def __init__(self, seq_json: list, bbox:addr.BBoxFromCoordinate, nsdi_key:str, code_key:str):
+       # type: (list, addr.BBoxFromCoordinate, str, str) -> None
         self.code_dict = addr.UsabilityCode(key = code_key).code_list
         self.interest_list = []
 
         matches = ["(연속주제)", "건물통합정보_마스터"]
         for seq in seq_json:
+
             if ("(연속주제)" in seq["OBJ_KNAME"]) or ("건물통합정보" in seq["OBJ_KNAME"]):
                 self.check_loop(seq=seq, bbox=bbox, nsdi_key=nsdi_key, code_key=code_key)
 
     def check_loop(self, seq: dict, bbox:addr.BBoxFromCoordinate, nsdi_key:str, code_key:str):
-        # seq를 훑으며 특이점을 찾습니다.
+        # type: (dict, addr.BBoxFromCoordinate, str, str) -> None
+        """
+        클래스가 정의되는 순간 바운딩박스를 돌며 특이지점을 찾는다.
+        """
 
         name_seq = seq["OBJ_KNAME"] 
         geojson_seq = bbox.get_bbox_data(seq = seq["OBJ_SEQ"],key = nsdi_key)
@@ -44,12 +60,14 @@ class AbnormalCheck:
 
             # 특이구역 체크
             if "(연속주제)" in name_seq:
+                
                 interset_return = self.check_interest(name_seq, interest, polylist_seq)
                 self.interest_list.append(interset_return)
-
+                
             elif "건물통합정보" in name_seq:
                 print ("건물정보를 찾았습니다.")
                 self.use_dict = self.check_building(name_seq, polylist_seq, code_key)
+
 
 
         else:
@@ -58,7 +76,10 @@ class AbnormalCheck:
         
         
     def check_interest(self, name_seq, interest, polylist_seq):
-        
+        # type: (str, float, list[dict]) -> Interest
+        """
+        seq의 이름과 폴리곤의 속성과 형태가 주어지면 폴리곤의 개수를 샌다. 
+        """
         if interest != 0:
             count = 0
             poly_list = []
@@ -92,7 +113,10 @@ class AbnormalCheck:
             return found_interest
 
     def check_building(self, name_seq, polylist_seq, code_key):
-        
+        # type: (str, list[dict], str) -> dict(str, Building)
+        """
+        건물정보 내의 폴리곤의 속성과 형태가 주어지면 건물 종류별 갯수를 샌다. 
+        """       
         use_dict = {}
         
 

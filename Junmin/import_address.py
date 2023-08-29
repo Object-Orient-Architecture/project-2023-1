@@ -1,6 +1,5 @@
 import requests
 import json
-import geopandas
 
 class CoordinateFromAddress:
 
@@ -107,11 +106,11 @@ class BBoxFromCoordinate:
             + key
         )
         response = requests.get(url)
-        response.encoding = 'UTF-8'
+
         if response.status_code == 200:
             try:
-                geojson = response.json()
-                return geojson
+                geojson = response.text
+                return json.loads(geojson)
             except:
                 print ("none")
         else:
@@ -132,7 +131,3 @@ class BBoxFromCoordinate:
                 poly_list.append(temp_dict)
                 
             return poly_list
-        
-
-
-# 88c6b251809f4831a79145d085e07ded

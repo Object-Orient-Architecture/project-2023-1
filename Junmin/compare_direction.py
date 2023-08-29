@@ -1,11 +1,20 @@
 
 class Comparison_dict:
+    """
+    건물 딕셔너리 끼리 비교하는 클래스
+    """
     def __init__(self, dict_list:list):
+        # type: (list[dict(Building)]) -> None
         self.dict_list = dict_list
         self.average_dicts(dict_list)
 
     def average_dicts(self, dict_list:list):
-
+        # type: (list[dict(Building)]) -> None
+        """
+        들어온 리스트의 평균을 구한다.
+        건물 딕셔너리를 구성하는 건물 주제의 갯수를 모두 더하고 리스트 갯수로 나눈다.
+        """
+        
         self.whole_count = {}
         self.smallest_count = {}
         self.biggest_count = {}
@@ -29,6 +38,11 @@ class Comparison_dict:
         self.count_average = {key: value / len(dict_list) for key, value in self.whole_count.items()}
 
     def compare_dicts(self, order):
+        # type: (int) -> dict()
+        """
+        비교군의 n번째가 평균과 얼마나 차이나는지 구한다.
+        """
+        
         if (order >= len(self.dict_list)):
             raise ValueError
         target_dict = self.dict_list[order]
@@ -47,11 +61,19 @@ class Comparison_dict:
 
 
 class Comparison_interest:
+    """
+    주제 리스트끼리 비교하는 클래스
+    """
     def __init__(self, interest_list:list):
+        # type: (list[list[Interest]]) -> None
         self.interest_list = interest_list
         self.average_list(interest_list)
 
     def average_list(self, interest_list:list):
+        # type: (list[list[Interest]]) -> None
+        """
+        들어온 주제 리스트의 평균을 구한다.
+        """
 
         self.whole_count = {}
         self.smallest_count = {}
@@ -79,6 +101,11 @@ class Comparison_interest:
         self.count_average = {key: value / len(interest_list) for key, value in self.whole_count.items()}
 
     def compare_interests(self, order):
+        # type: (int) -> dict()
+        """
+        비교군의 n번째가 평균과 얼마나 차이나는지 구한다.
+        """
+
         if (order >= len(self.interest_list)):
             raise ValueError
         target_interest = self.interest_list[order]
