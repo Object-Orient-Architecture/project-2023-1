@@ -17,7 +17,6 @@ import data
 # 인풋
 plan = None         # 평면 : rg.Polyline
 usage = -1          # 용도 : int
-fur_list = []       # 가구 : [rg.Brep]
 
 
 # 가구 종류 정의
@@ -28,21 +27,19 @@ type_table = {
             "shelf" : ("shelf", "shelf long","closet")
             }
 
-
 # 가구 클래스
 class Furniture:
-    def __init__(self,Model=rg.GeometryBase):
+    def __init__(self,Model:rg.GeometryBase):
         self.model = Model
         self.bbox = self.model.GetBoundingBox(rg.Plane.WorldXY)
         self.area = self.get_area()
         self.height = self.get_height()
-        self.width,self.depth = self.get_width()
+        self.width,self.depth = self.get_size()
         self.axis = rg.Vector3d(0,-1,0)        
 
-    def get_area(self):
+    def get_area(self)->rg.PolylineCurve:
         '''
         가구의 바닥 면적을 폴리라인으로 도출하는 함수
-        self -> rg.PolylineCurve
         '''
         bbox = self.bbox
         points = []
@@ -55,11 +52,9 @@ class Furniture:
 
         return area
     
-    def set_fur_type(self,fur_type,type_table = dict):
+    def set_fur_type(self,fur_type : str, type_table : dict):
         '''
         가구의 상세타입을 입력하면 자동으로 클래스를 생성하는 함수
-        fur_type : 가구의 상세타입, type_table : 타입을 정리한 테이블
-        self , fur_type : str , type_table : dict -> Furniture
         '''
         
         for type in type_table:
@@ -80,25 +75,23 @@ class Furniture:
                     
         return furniture                
                            
-    def move(self, location = rg.Point3d):
+    def move(self, location : rg.Point3d):
         '''
-        위치를 입력받으면 해당 위치로 이동하는 함수
-        self, location : rg.Point3D -> None
+        위치를 입력받으면 해당 위치로 이동하는 함수S
         '''
         move_vector = location - self.position
         trans = rg.Transform.Translation(move_vector)
         self.transform(trans)
 
-    def Rotate(self, angle):
+    def Rotate(self, angle:float):
         '''
         각도를 입력받으면 해당 각도만큼 회전하는 함수
-        self, angle : float -> None
         '''
         angle = math.radians(angle)
         trans = rg.Transform.Rotation(angle,self.position)
         self.transform(trans)
     
-    def transform(self,transform):
+    def transform(self,transform : rg.Transform):
         '''
         트랜스폼 매트릭스를 입력받으면 model, area, axis를 변형하는 함수
          self, transform : rg.Transform -> None
@@ -108,7 +101,7 @@ class Furniture:
         self.axis.Transform(transform)
         self.axis.Unitize()
 
-    def align_axis(self,target_axis=rg.Vector3d):
+    def align_axis(self,target_axis=rg.Vector3d)->rg.Transform:
         '''
         목표 축을 입력하면 해당 축에 가구의 축을 정렬하는 함수
         self, target_axis : rg.Vector3D -> None
@@ -117,11 +110,11 @@ class Furniture:
         self.transform(trans)
     
     @property
-    def position(self):
+    def position(self)->rg.Point3d:
         '''가구의 위치를 도출하는 함수'''
         return self.area.ToPolyline().CenterPoint()
     
-    def get_height(self):
+    def get_height(self)->float:
         '''가구의 높이를 도출하는 함수'''
 
         bbox = self.bbox
@@ -129,9 +122,9 @@ class Furniture:
         maxPt = max(corners,key=lambda x: x.Z)
         minPt = min(corners,key=lambda x: x.Z)
         
-        return float(maxPt.Z - minPt.Z)
+        return maxPt.Z - minPt.Z
     
-    def get_width(self):
+    def get_size(self)->Tuple[float,float]:
         '''가구의 너비와 깊이를 도출하는 함수'''
 
         area = self.area.ToPolyline()
@@ -141,14 +134,13 @@ class Furniture:
         return width,depth
     
     @property
-    def region(self):
+    def region(self)->rg.PolylineCurve:
         '''
         가구의 점유 영역 (가구 영역 + 통로 900) 을 도출하는 함수
-        self -> region : rg.PolylineCurve
         '''
         return self.area.Offset(rg.Plane.WorldXY,900,0,rg.CurveOffsetCornerStyle.Sharp)
     
-    def arrange_to_Wall(self, region):
+    def arrange_to_Wall(self, region:rg.PolylineCurve):
         '''
         영역에 걸쳐 배치된 가구를 영역에 맞춰주는 함수
         self, room : Room => bool
@@ -171,7 +163,7 @@ class Furniture:
             self.move(point)
             return True
     
-    def attatch_to_wall(self,region,point,target_axis):
+    def attatch_to_wall(self,region:rg.PolylineCurve,point:rg.Point3d,target_axis:rg.Vector3d):
         '''
         영역, 위치, 축을 입력하면 해당 위치와 축에 맞춰 방의 벽에 가구를 붙혀주는 함수
         self, region : rg.PolylineCurve, point : rg.Point3D, target_axis : rg.Vector3D -> None
@@ -181,7 +173,7 @@ class Furniture:
         self.arrange_to_Wall(region)
     
 class Table(Furniture):
-    def __init__( self, Model = rg.Brep, Type = str ):
+    def __init__( self, Model : rg.Brep, Type : str ):
         Furniture.__init__(self,Model)
         self.type = Type
         
@@ -296,7 +288,7 @@ class Chair(Furniture):
         
         
 class Shelf(Furniture):
-    def __init__( self, Model = rg.Brep, Type = str ):
+    def __init__( self, Model : rg.Brep, Type : str ):
         Furniture.__init__(self,Model)
         self.type = Type
     
@@ -320,7 +312,6 @@ class Shelf(Furniture):
         
         #2. 이동
         self.attatch_to_wall(room.region,point,target_axis)
-            
 
     def place_closet(self, room):
         #1.방의 형상에 따라 가구 위치와 축 조정
@@ -348,7 +339,7 @@ class Bed(Furniture):
 
         #2. 방의 형상에 따라 가구의 축 방향 정렬
         if (room.shape==1):
-            target_axis = room.wall[2].Direction                          
+            target_axis = room.wall[2].Direction                       
 
         elif (room.shape==0):
             target_axis = -1 * room.wall[1].Direction
@@ -360,16 +351,18 @@ class Bed(Furniture):
 class Room:
     def __init__(self,plan=rg.Polyline):
         self.plan = plan                                # 평면 : rg.Polyline
+    
         self.region = self.get_region()                 # 영역 : rg.PolylineCurve
         self.door = rg.Line(plan.First,plan.Last)       # 문 : rg.Line
-        self.axis = self.get_axis()                     # 축 : rg.Vector3D
+    
+        self.axis = self.get_axis()                     # type: rg.Vector3D
         self.wall = self.get_wall()                     # 벽 : [rg.Line]
         self.width = self.get_width()                   # 너비 : float
         self.depth = self.get_depth()                   # 깊이 : float
         self.shape = self.get_shape()                   # 형상 : int
-        self.fur_type_list = []                         # 가구 타입 : [str]
         self.possible_region = self.init_region()       # 배치 가능 영역 : rg.PolylineCurve
         self.placed_furniture = []                      # 배치된 가구 : [rg.Brep]
+        self.fur_type_list = []                         # 가구 타입 : [str]
         self.furnitures = []                            # 필요한 가구
     
     def init_region(self):
@@ -512,14 +505,14 @@ class Room:
         return [fur.model for fur in self.placed_furniture]           
 
 class LivingRoom(Room):
-    def __init__(self,Plan=rg.Polyline,Type=str):
+    def __init__(self,Plan:rg.Polyline,Type:str):
         Room.__init__(self,Plan)
         self.type = Type
         self.fur_type_list = ["sofa long","coffe table","shelf long","sofa","shelf"]
         self.furnitures = self.get_furniture_list()
         self.valid_wall = self.set_wall()
         
-    def set_wall(self):
+    def set_wall(self)->List[rg.Line]:
         """
         벽들 중에 연산에 사용할 벽만 반환한다.
         Returns:
