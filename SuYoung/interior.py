@@ -394,7 +394,7 @@ class Room:
         for type in self.fur_type_list:
             model_data = data.BrepfromFilebyName(data.file_path,type)
             if model_data:
-                furniture = ClassManager.set_furniture(model_data,type)
+                furniture = ClassManager().set_furniture(model_data,type)
                 furniture_list.append(furniture)
             else:
                 print(type + "가구는 아직 준비되지 않았습니다.")
@@ -567,3 +567,9 @@ class ClassManager:
                     furniture = Shelf(model, fur_type)
                     
         return furniture
+    
+def main(plan,usage):
+    
+    room = ClassManager().set_room(plan,usage)
+    
+    return room.generate()
