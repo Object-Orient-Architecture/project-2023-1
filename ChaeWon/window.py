@@ -77,7 +77,7 @@ class WindowMaker:
             return windowcurves
 
         def create_window_from_baseline(_windowcurve):
-            '''window 생성'''
+            '''windows 생성'''
             # 선을 extrude해 window 생성
             window = rh.Extrusion.Create(_windowcurve, 1.5, False)  # 높이 1.5m
             # window를 바닥면으로부터 높이기
