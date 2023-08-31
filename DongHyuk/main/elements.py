@@ -9,7 +9,8 @@ from math import sqrt
 import numpy as np
 import rhino3dm as rh
 from copy import deepcopy
-
+from window import WindowMaker
+# from window import ParapetMaker
 def replace_nan_with_str(data_dict):
             for key in data_dict:
                 if isinstance(data_dict[key], float) and data_dict[key] != data_dict[key]:
@@ -53,6 +54,23 @@ class BuildingElement(Element):
         
         replace_nan_with_str(self.dictionary_prop)
         self.dictionary_prop["geometry"] = self.geometry
+        self.windows = self.create_window()
+#        self.parapets = self.create_parapet()
+
+    def create_window(self):
+        coords = self.geometry['coordinates'][0]
+        points = rh.Point3dList([coords_to_rhino_point(coord) for coord in coords])
+        
+        poly_line = rh.Curve.CreateControlPointCurve(points,1)
+        windows  = WindowMaker(poly_line, self.floor, self.FLOOR_HEIGHT).create()
+        return windows
+    
+   # def create_parapet(self):
+   #     coords = self.geometry['coordinates'][0]
+   #     points = rh.Point3dList([coords_to_rhino_point(coord) for coord in coords])
+   #     poly_line = rh.Curve.CreateControlPointCurve(points,1)
+   #     parapets = ParapetMaker(poly_line, self.floor, self.FLOOR_HEIGHT).create()
+   #     return parapets
 
     def build_to_rhino(self):
         coords = self.geometry['coordinates'][0]
@@ -60,6 +78,8 @@ class BuildingElement(Element):
         
         poly_line = rh.Curve.CreateControlPointCurve(points,1)
         extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
+        for window in self.windows : Element.doc_rh.Objects.AddExtrusion(window)
+        # for parapet in self.parapets : Element.doc_rh.Objects.AddExtrusion(parapet)
         self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion)
         
         
@@ -233,26 +253,20 @@ class ContourElement(Element):
             #Get Length of Curve
             if(isinstance(curve,rh.LineCurve)):
                 crv_len = curve.Line.Length
-                print(f'Line Length = {crv_len}')
             else:
                 crv_len = curve.ToPolyline().Length
-                print(f'Polyline Length = {crv_len}')
             
             #Divide Curve by approximate length
             div_num = int(crv_len/length)
             if div_num == 0:
                 div_num = 1
             
-            print(f'div_num = {div_num}')
-           
            #Get Points of Curve by dividing parameters 
             points = [] 
             for i in range(div_num+1):
                 
                 new_pt = curve.PointAt(i/div_num * curve.Domain.T1)
-                print(f'param = {i/div_num * curve.Domain.T1} , point = {new_pt.X},{new_pt.Y},{new_pt.Z}')
                 points.append((new_pt.X,new_pt.Y,new_pt.Z))
-            print()
             return points
         
         def __project_pt_to_XY(pt):
