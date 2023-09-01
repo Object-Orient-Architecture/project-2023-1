@@ -327,6 +327,7 @@ class ContourElement(Element):
         obj_attr = rh.ObjectAttributes()
         obj_attr.LayerIndex = ContourElement.contour_layer_ind
         ContourElement.mesh_id = Element.doc_rh.Objects.AddMesh(contour_mesh,obj_attr)
+        Element.doc_rh.Objects.AddMesh(contour_mesh)
         
 class RoadElement(Element):
     
