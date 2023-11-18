@@ -1,7 +1,8 @@
-from constants.options import *
+from model.constants.options import *
 from zipfile import ZipFile
-from operator_ import Operator
-from os import path
+from model.operator_ import Operator
+from os import path,mkdir
+from shutil import copy
 import subprocess
 
 
@@ -43,7 +44,7 @@ class SMA:
         self.zip_file = zip_file
     
     #1 -2 | Operate
-    def operate(self):
+    def operate(self, rhino_doc_path : str):
         try:
             self.operator.set_zip_file(self.zip_file)
             self.operator.unzip()
@@ -54,19 +55,16 @@ class SMA:
             self.operator.find_elements("BORDER")
             self.operator.bake_elements_tojson()
             self.operator.bake_elements_to_rhino()
-            self.operator.save_rhino_object()
+            self.operator.save_rhino_object(rhino_doc_path)
         except Exception as e:
             raise e
         finally:
             self.operator.remove_unzipped() # Unconditionally remove unzipped file
         
     #1 -3 | Get Result
-    def get_result(self):
-        rhino_exe_path = r'C:\Program Files\Rhino 6\System\Rhino.exe'
-        file_to_open = path.abspath('.\\project-2023-1\\DongHyuk\\main\\result\\result.3dm')
-        script_to_open = path.abspath(".\\project-2023-1\\DongHyuk\\main\\rhino_postprocess.py")
+    def get_result(self,rhino_doc_path:str, rhino_exe_path : str):
+        file_to_open = rhino_doc_path+"\\result.3dm"
+        script_to_open = path.abspath(r"C:\Users\Donghyeok\OneDrive\ProjectFile\DPA\project-2023-1\DongHyuk\SiteModelingAutomation\model\rhino_postprocess.py")
         script_call = "-_RunPythonScript {0}".format(script_to_open)
-        call_script = '"{0}" /nosplash /runscript="{1} _OneView _Enter _SelAll _Zoom S", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
+        call_script = '"{0}"  /nosplash /runscript="{1} _OneView _Enter _SelAll _Zoom S ", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
         subprocess.call(call_script)
-
-    
