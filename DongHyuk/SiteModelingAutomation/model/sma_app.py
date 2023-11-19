@@ -53,7 +53,7 @@ class SMA:
             self.operator.find_elements("ROAD")
             self.operator.find_elements("VEGETATION")
             self.operator.find_elements("BORDER")
-            self.operator.bake_elements_tojson()
+            # self.operator.bake_elements_tojson()
             self.operator.bake_elements_to_rhino()
             self.operator.save_rhino_object(rhino_doc_path)
         except Exception as e:
