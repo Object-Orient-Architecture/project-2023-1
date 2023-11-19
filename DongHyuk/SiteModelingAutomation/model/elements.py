@@ -65,6 +65,9 @@ class BuildingElement(Element):
         points = rh.Point3dList([rh.Point3d(coord[0],coord[1],0) for coord in coords])
         
         poly_line = rh.Curve.CreateControlPointCurve(points,1)
+        if(poly_line.ClosedCurveOrientation() == rh.CurveOrientation.CounterClockwise):
+            poly_line.Reverse()
+            print("Reversed")
         extrusion = rh.Extrusion().Create(poly_line, -1 * self.floor * self.FLOOR_HEIGHT,True)
         
         self.extrusion_id = Element.doc_rh.Objects.AddExtrusion(extrusion,BuildingElement.building_attr)

@@ -1,7 +1,7 @@
 from model.constants.options import *
 from zipfile import ZipFile
 from model.operator_ import Operator
-from os import path,mkdir
+from os import path,mkdir,makedirs,remove
 from shutil import copy
 import subprocess
 
@@ -64,7 +64,29 @@ class SMA:
     #1 -3 | Get Result
     def get_result(self,rhino_doc_path:str, rhino_exe_path : str):
         file_to_open = rhino_doc_path+"\\result.3dm"
-        script_to_open = path.abspath(r"C:\Users\Donghyeok\OneDrive\ProjectFile\DPA\project-2023-1\DongHyuk\SiteModelingAutomation\model\rhino_postprocess.py")
-        script_call = "-_RunPythonScript {0}".format(script_to_open)
-        call_script = '"{0}"  /nosplash /runscript="{1} _OneView _Enter _SelAll _Zoom S ", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
-        subprocess.call(call_script)
+        script_to_copy_path = path.abspath(r".\model\rhino_postprocess.py")
+        script_to_open = path.abspath(rhino_doc_path+"\\rhino_postprocess.py")
+        try:
+            copy_python_code(script_to_copy_path, rhino_doc_path)
+            script_call = "-_RunPythonScript {0}".format(script_to_open)
+            call_script = '"{0}"  /nosplash /runscript="{1} _OneView _Enter _SelAll _Zoom S ", "{2}"'.format(rhino_exe_path, script_call, file_to_open)
+            subprocess.call(call_script)
+            remove(script_to_open)
+        finally:
+            remove(script_to_open)
+
+
+
+def copy_python_code(code_file, destination_dir):
+    # 디렉토리가 존재하지 않을 경우 생성
+    makedirs(destination_dir, exist_ok=True)
+
+    # 코드 파일의 경로와 파일명 추출
+    code_dir, code_filename = path.split(code_file)
+
+    # 코드 파일을 목적 디렉토리로 복사
+    copy(code_file, path.join(destination_dir, code_filename))
+
+    print(f"{code_filename}을(를) {destination_dir}로 복사했습니다.")
+    
+    

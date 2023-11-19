@@ -12,7 +12,6 @@ def set_camera_view():
 
 
 def main():
-    print("MAIN CALLED")
     set_camera_view()
     #CONST
     Z_AXIS = (0,0,1)
@@ -32,7 +31,6 @@ def main():
     rs.DeleteObjects(vegetation_pts)
     
     #Mesh to NURB
-    print(contour_mesh)
     contour_srf = rs.MeshToNurb(contour_mesh,delete_input=True)
     
     #Project Building
@@ -42,13 +40,19 @@ def main():
         vertices = rs.SurfacePoints(building)
         #Cull dups
         culled = rs.CullDuplicatePoints(vertices)
+        #Get Lower Z
+        two_z = list(set([pt.Z for pt in culled]))
+        two_z.sort()
+        lower_z = two_z[0]
         #Cull Higher
         base_pts = []
         for pt in culled:
-            if pt.Z == 0:
+            if pt.Z == lower_z:
                 base_pts.append(pt)
         #Project to Srf
         results = rs.ProjectPointToSurface(base_pts,srf,(0,0,1))
+        if results.__len__() == 0:
+            return
         #Find Lowest
         i = 0
         min_i = 0
@@ -60,7 +64,6 @@ def main():
             else:
                 continue
             i += 1
-        print(results)
         lowest_pt = results[min_i]
         lowest_pt_correspond = base_pts[min_i]
         target_z = lowest_pt.Z
@@ -71,6 +74,9 @@ def main():
         
     for building in building_obj:
         move_vect = building_to_srf(building,contour_srf)
+        if move_vect == None:
+            rs.DeleteObject(building)
+            continue
         rs.MoveObjects(building,move_vect)
     
     #Road to Surface
