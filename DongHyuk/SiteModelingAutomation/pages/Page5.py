@@ -11,7 +11,7 @@ class Page5(QWidget):
     def initUI(self):
         self.setLayout(QVBoxLayout())
 
-        self.thank_you_lbl = QLabel("실행이 완료되었습니다!", self)
+        self.thank_you_lbl = QLabel(self.app.fin_message, self)
         self.layout().addWidget(self.thank_you_lbl)
 
         self.finish_btn = QPushButton("종료", self)

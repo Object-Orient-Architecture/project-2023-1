@@ -1,8 +1,6 @@
-#-*- encoding: utf-8 -*-
 import rhinoscriptsyntax as rs
 import Rhino.Geometry as geo
 
-#카메라 뷰 설정
 def set_camera_view():
     view_name = "Perspective" 
     camera_location = (10, 10, 10)  
@@ -12,23 +10,21 @@ def set_camera_view():
 
     rs.ViewCamera(view_name, [camera_location, camera_target, camera_up_vector])
 
-#레이어별 오브젝트 선택
-def sel_obj_by_layer(layer):
-    return rs.ObjectsByLayer(layer)
-
 
 def main():
     set_camera_view()
     #CONST
     Z_AXIS = (0,0,1)
+    #Select Object by Layer
+    def sel_obj_by_layer(layer):
+        return rs.ObjectsByLayer(layer)
     
-    #오브젝트 선택
     contour_mesh = sel_obj_by_layer('Contour')
     road_crv = sel_obj_by_layer('Road')
     vegetation_pts = sel_obj_by_layer('Vegetation')
     building_obj = sel_obj_by_layer('Building')
     
-    #식생-점 객체를 대지 메쉬에 투영
+    #Project vegetation onto contour mesh
     projected_vegetation_pts = rs.ProjectPointToMesh(vegetation_pts,contour_mesh,(0,0,1))
     rs.CurrentLayer("Vegetation")
     rs.AddPoints(projected_vegetation_pts)
@@ -133,6 +129,5 @@ def main():
     #         print(e)
 
     # rs.ShowObjects(rs.ObjectsByLayer("Building"))
-    
 if __name__ == "__main__":
     main()

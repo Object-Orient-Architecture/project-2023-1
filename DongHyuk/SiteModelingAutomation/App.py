@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QStackedWidget
-from client.pages.Page1 import Page1
-from client.pages.Page2 import Page2
-from client.pages.Page3 import Page3
-from client.pages.Page4 import Page4
-from client.pages.Page5 import Page5
-from model.process import Proccess
+from os import remove, rmdir
+from pages.Page1 import Page1
+from pages.Page2 import Page2
+from pages.Page3 import Page3
+from pages.Page4 import Page4
+from pages.Page5 import Page5
+from model.A_process import Proccess
 
 class MyApp(QWidget):
 
@@ -15,6 +16,9 @@ class MyApp(QWidget):
         self.map_path = None
         self.rhino_path = None
         self.target_path = None
+        
+        # 프로그램이 종료할 때 성공 혹은 오류 발생을 알리는 메세지
+        self.fin_message = "실행이 완료되었습니다!\n 작동 이상이 발생했다면 지도 파일(.Zip)을 보내주세요!\n이메일: dpemrk7@gmail.com" #type:str
 
         # UI를 초기화합니다.
         self.initUI()
@@ -53,9 +57,13 @@ class MyApp(QWidget):
         # 오류가 발생하면 콘솔에 출력합니다.
         try:
             process = Proccess(self.map_path,self.rhino_path,self.target_path)
-            process.call()
+            process.call_sma()
+            print("APP | Process Done!")
         except Exception as e:
-            print(e)
+            self.fin_message = '''작동 중 오류가 발생했습니다! 아래 오류 메세지와 작업하고자 했던 파일(.Zip)을 같이 보내주세요!
+                                  \n이메일 : dpemrk7@gmail.com\n\n''' + str(e)
+            
+            
 
 if __name__ == '__main__':
     import sys

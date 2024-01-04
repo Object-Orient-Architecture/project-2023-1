@@ -1,3 +1,0 @@
-# SITE MODELING AUTOMATION
-
-App.py를 Run하시면 됩니다 :3

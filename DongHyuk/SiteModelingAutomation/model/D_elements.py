@@ -3,7 +3,6 @@ from json import dump
 from os import makedirs
 from shutil import rmtree
 from shapely.geometry import Polygon, LineString, Point, mapping
-from model.window import WindowMaker
 from scipy.spatial import Delaunay
 from itertools import permutations, combinations
 from math import sqrt
